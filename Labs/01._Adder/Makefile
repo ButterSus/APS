@@ -45,10 +45,20 @@ BITSTREAM := $(BUILD_DIR)/out/$(TOP_MODULE).bit
 # ---------
 
 # These are aliases for convenience
-.PHONY: all synth place route bitstream program sim clean
+.PHONY: all quick synth place route bitstream program sim clean
 
-# By default, run bitstream
-all: bitstream
+# By default, run fastest workflow
+all: quick
+
+# Quick build - single step synthesis to bitstream (fastest)
+quick: $(SRC_FILES) $(XDC_FILES) | $(BUILD_DIR) $(BUILD_DIR)/out
+	@if [ -z "$(TOP_MODULE)" ]; then \
+		echo "Error: Please specify a top module with TOP_MODULE=<basename>"; \
+		echo "Example: make quick TOP_MODULE=my_top"; \
+		exit 1; \
+	fi
+	cd $(BUILD_DIR) && $(VIVADO) -mode batch -notrace -source ../$(TCL_DIR)/quick.tcl \
+		-tclargs $(TOP_MODULE) $(FPGA_PART) "$(SRC_FILES)" "$(XDC_FILES)"
 
 # Synthesis
 synth: $(SYNTH_DCP)
@@ -72,7 +82,7 @@ sim: $(SRC_FILES) $(TEST_FILES) | $(BUILD_DIR)
 		exit 1; \
 	fi
 	cd $(BUILD_DIR) && $(VIVADO) -mode $(if $(GUI),gui,batch) \
-		-source ../$(TCL_DIR)/sim.tcl \
+		-source ../$(TCL_DIR)/sim.tcl -notrace \
 		-tclargs $(TEST_DIR)/$(TESTBENCH) "$(SRC_FILES)" $(if $(GUI),gui,)
 
 
@@ -85,14 +95,14 @@ $(SYNTH_DCP): $(SRC_FILES) $(XDC_FILES) | $(BUILD_DIR) $(BUILD_DIR)/out
 		echo "Example: make [synth] TOP_MODULE=my_top"; \
 		exit 1; \
 	fi
-	cd $(BUILD_DIR) && $(VIVADO) -mode batch -source ../$(TCL_DIR)/synth.tcl \
+	cd $(BUILD_DIR) && $(VIVADO) -mode batch -notrace -source ../$(TCL_DIR)/synth.tcl \
 		-tclargs $(TOP_MODULE) $(FPGA_PART) $(SRC_FILES) $(XDC_FILES)
 
 $(PLACE_DCP): $(SYNTH_DCP)
-	cd $(BUILD_DIR) && $(VIVADO) -mode batch -source ../$(TCL_DIR)/place.tcl
+	cd $(BUILD_DIR) && $(VIVADO) -mode batch -notrace -source ../$(TCL_DIR)/place.tcl
 
 $(ROUTE_DCP): $(PLACE_DCP)
-	cd $(BUILD_DIR) && $(VIVADO) -mode batch -source ../$(TCL_DIR)/route.tcl
+	cd $(BUILD_DIR) && $(VIVADO) -mode batch -notrace -source ../$(TCL_DIR)/route.tcl
 
 $(BITSTREAM): $(ROUTE_DCP)
 	@if [ -z "$(TOP_MODULE)" ]; then \
@@ -100,7 +110,7 @@ $(BITSTREAM): $(ROUTE_DCP)
 		echo "Example: make [bitstream] TOP_MODULE=my_top"; \
 		exit 1; \
 	fi
-	cd $(BUILD_DIR) && $(VIVADO) -mode batch -source ../$(TCL_DIR)/bitstream.tcl \
+	cd $(BUILD_DIR) && $(VIVADO) -mode batch -notrace -source ../$(TCL_DIR)/bitstream.tcl \
 		-tclargs $(TOP_MODULE)
 
 # Create build directories
