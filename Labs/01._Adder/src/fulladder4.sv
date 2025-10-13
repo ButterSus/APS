@@ -22,7 +22,7 @@ module fulladder4 (
   (
     .a_i     ( a_i   [1] ),
     .b_i     ( b_i   [1] ),
-    .carry_i ( carry_i   ),
+    .carry_i ( carry [0] ),
     .sum_o   ( sum_o [1] ),
     .carry_o ( carry [1] )
   );
@@ -31,7 +31,7 @@ module fulladder4 (
   (
     .a_i     ( a_i   [2] ),
     .b_i     ( b_i   [2] ),
-    .carry_i ( carry_i   ),
+    .carry_i ( carry [1] ),
     .sum_o   ( sum_o [2] ),
     .carry_o ( carry [2] )
   );
@@ -40,7 +40,7 @@ module fulladder4 (
   (
     .a_i     ( a_i   [3] ),
     .b_i     ( b_i   [3] ),
-    .carry_i ( carry_i   ),
+    .carry_i ( carry [2] ),
     .sum_o   ( sum_o [3] ),
     .carry_o ( carry [3] )
   );
