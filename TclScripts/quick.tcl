@@ -12,15 +12,20 @@ puts "Top Module: $top_module"
 puts "========================================="
 
 # Create project
-create_project -force quick . -part $fpga_part
+create_project -force quick ./quick_proj -part $fpga_part
 
 # Maximum threads
 set_param general.maxThreads 8
+
 
 # Add source files
 foreach f $src_files {
     if {[file exists ../$f]} {
         add_files -norecurse ../$f
+        # Explicitly set SystemVerilog for .sv files
+        if {[string match "*.sv" $f]} {
+            set_property file_type SystemVerilog [get_files ../$f]
+        }
     }
 }
 
@@ -31,8 +36,14 @@ foreach xdc $xdc_files {
     }
 }
 
-# Set top
+
+# Set top module
 set_property top $top_module [current_fileset]
+
+# Enable automatic source management and compile order
+set_property source_mgmt_mode All [current_project]
+
+# Update compile order - Vivado analyzes dependencies automatically
 update_compile_order -fileset sources_1
 
 # Run synthesis (fast mode)
