@@ -11,6 +11,10 @@ module instr_mem (
   // не в диапазоне [10:2], а [8:2].
   logic [31:0] rom [INSTR_MEM_SIZE_WORDS];
 
+  initial begin
+    $readmemh("task_primes.mem", rom);
+  end
+
   assign read_data_o = rom [read_addr_i[Width - 1:2]];
 
 endmodule

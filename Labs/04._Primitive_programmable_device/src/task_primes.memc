@@ -1,0 +1,127 @@
+
+// -----------
+// Pseudo-Code
+
+// Prime numbers
+
+// counter = 0
+//
+// for (int x = 2; x <= 100; x ++) {
+//    isPrime = true
+//    for (int i = 2; i < x; i ++) {
+//       if (x % i == 0)
+//          isPrime = false
+//    }
+//    if (isPrime)
+//       counter++
+// }
+//
+// $display(counter)
+
+// ---------------
+// Pseudo-Assembly
+
+// Initialize
+
+// li   r1, 0
+// li   r5, 2
+// li   r6, 100
+// li   r7, 1
+// add  r2, r5, r0
+//
+// outer_loop:  # 5
+//     // Check if x <= 100
+//     sltu r11, r6, r2          // r11 = (100 < x) ? 1 : 0
+//     bne  r11, r0, end_outer   // if (x > 100) goto end_outer [26 - 6 = 20]
+//
+//     // isPrime = true
+//     add  r4, r7, r0           // isPrime = 1
+//
+//     // i = 2
+//     add  r3, r5, r0           // i = 2
+//
+//     inner_loop:  # 9
+//         // Check if i < x
+//         sltu r11, r3, r2          // r11 = (i < x) ? 1 : 0
+//         beq  r11, r0, end_inner   // if (i >= x) goto end_inner [22 - 10 = 12]
+//
+//         // Calculate x % i (modulo operation)
+//         // We need to compute: x - (x / i) * i
+//
+//         // Division by repeated subtraction: x / i
+//         add  r8, r0, r0           // quotient = 0
+//         add  r9, r2, r0           // remainder = x
+//
+//         div_loop:  # 13
+//             sltu r11, r9, r3      // r11 = (remainder < i) ? 1 : 0
+//             bne  r11, r0, div_end // if (remainder < i) goto div_end [18 - 14 = 4]
+//             sub  r9, r9, r3       // remainder -= i
+//             add  r8, r8, r7       // quotient++
+//             jump div_loop         // goto div_loop [-4]
+//
+//         div_end:  # 18
+//         // r9 now contains x % i
+//
+//         // if (x % i == 0) isPrime = false
+//         bne  r9, r0, skip_clear   // if (remainder != 0) skip [20 - 18 = 2]
+//         add  r4, r0, r0           // isPrime = 0
+//
+//         skip_clear:  # 20
+//         // i++
+//         add  r3, r3, r7           // i++
+//         jump inner_loop           // goto inner_loop [9 - 21 = -12]
+//
+//     end_inner:  # 22
+//     // if (isPrime) counter++
+//     beq  r4, r0, skip_count       // if (!isPrime) skip [24 - 22 = 2]
+//     add  r1, r1, r7               // counter++
+//
+//     skip_count:  # 24
+//     // x++
+//     add  r2, r2, r7               // x++
+//     jump outer_loop               // goto outer_loop [5 - 25 = -20]
+//
+// end_outer:  # 26
+// // Display counter
+// jump +0; addr1 = r1
+
+//              __I_M...M_E_D...D_I_A...T_E_____
+// J | B | WS | _ALU_ | _RA1_ | _RA2_ | _OFFSET_ | _WA__
+   0   0   00   00000   00000   00000   00000000   00001
+   0   0   00   00000   00000   00000   00000010   00101
+   0   0   00   00000   00000   00000   01100100   00110
+   0   0   00   00000   00000   00000   00000001   00111
+   0   0   01   00000   00101   00000   00000000   00010
+
+   0   0   01   00011   00110   00010   00000000   01011
+   0   1   00   11001   01011   00000   00010100   00000
+
+   0   0   01   00000   00111   00000   00000000   00100
+
+   0   0   01   00000   00101   00000   00000000   00011
+
+   0   0   01   00011   00011   00010   00000000   01011
+   0   1   00   11000   01011   00000   00001100   00000
+
+   0   0   01   00000   00000   00000   00000000   01000
+   0   0   01   00000   00010   00000   00000000   01001
+
+   0   0   01   00011   01001   00011   00000000   01011
+   0   1   00   11001   01011   00000   00000100   00000
+   0   0   01   01000   01001   00011   00000000   01001
+   0   0   01   00000   01000   00111   00000000   01000
+   1   0   00   00000   00000   00000   11111100   00000
+
+   0   1   00   11001   01001   00000   00000010   00000
+   0   0   01   00000   00000   00000   00000000   00100
+
+   0   0   01   00000   00011   00111   00000000   00011
+   1   0   00   00000   00000   00000   11110100   00000
+
+   0   1   00   11000   00100   00000   00000010   00000
+   0   0   01   00000   00001   00111   00000000   00001
+
+   0   0   01   00000   00010   00111   00000000   00010
+   1   0   00   00000   00000   00000   11101100   00000
+
+   1   0   00   00000   00001   00000   00000000   00000

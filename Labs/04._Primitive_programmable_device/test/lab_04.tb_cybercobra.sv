@@ -26,11 +26,15 @@ module lab_04_tb_CYBERcobra();
     always #5 clk = ~clk;
 
     initial begin
+        $dumpvars (0);
+    end
+
+    initial begin
     $display("Test has been started");
     rstn = 1'b1;
     #10;
     rstn = 1'b0;
-    sw_i = 16'b100001000; //значение, до которого считает счетчик
+    sw_i = 16'b000000010;
     #10000;
     $display("\n The test is over \n See the internal signals of the CYBERcobra on the waveform \n");
     $finish;
