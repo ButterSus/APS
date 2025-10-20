@@ -10,7 +10,7 @@ module CYBERcobra (
   wire jump;
   wire branch;
 
-  wire [9:0] offset;  // words
+  wire [9:0] offset;
 
   wire [4:0] reg1_addr;
   wire [4:0] reg2_addr;
@@ -69,7 +69,7 @@ module CYBERcobra (
     .read_data_o ( instr_bus )
   );
 
-  // =============
+  // -------------
   // Register File
 
   assign out_o = rf_data1;
@@ -82,10 +82,12 @@ module CYBERcobra (
       2'd3 : rf_write_data = 32'd0;
     endcase
 
+  wire rf_we = ~branch & ~jump;
+
   register_file i_rf
   (
     .clk_i          ( clk_i           ),
-    .write_enable_i ( ~branch & ~jump ),
+    .write_enable_i ( rf_we ),
     .read_addr1_i   ( reg1_addr       ),
     .read_addr2_i   ( reg2_addr       ),
     .write_addr_i   ( dest_addr       ),

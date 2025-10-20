@@ -26,13 +26,6 @@ package decoder_pkg;
   localparam JAL_OPCODE      = 5'b11_011;
   localparam SYSTEM_OPCODE   = 5'b11_100;
 
-  // dmem type load store
-  localparam LDST_B          = 3'b000;
-  localparam LDST_H          = 3'b001;
-  localparam LDST_W          = 3'b010;
-  localparam LDST_BU         = 3'b100;
-  localparam LDST_HU         = 3'b101;
-
   // operand a selection
   localparam OP_A_RS1        = 2'b00;
   localparam OP_A_CURR_PC    = 2'b01;
@@ -50,6 +43,71 @@ package decoder_pkg;
   localparam WB_LSU_DATA     = 2'd1;
   localparam WB_CSR_DATA     = 2'd2;
 
+  // funct7 : OP
+  localparam F7_ANY  = 7'b???????;
+  localparam F7_SLLI = 7'b0000000;
+  localparam F7_SRLI = 7'b0000000;
+  localparam F7_SRAI = 7'b0100000;
+  localparam F7_ADD  = 7'b0000000;
+  localparam F7_SUB  = 7'b0100000;
+  localparam F7_SLL  = 7'b0000000;
+  localparam F7_SLT  = 7'b0000000;
+  localparam F7_SLTU = 7'b0000000;
+  localparam F7_XOR  = 7'b0000000;
+  localparam F7_SRL  = 7'b0000000;
+  localparam F7_SRA  = 7'b0100000;
+  localparam F7_OR   = 7'b0000000;
+  localparam F7_AND  = 7'b0000000;
+
+  // funct3 : OP
+  localparam F3_SLLI = 3'b001;
+  localparam F3_SRLI = 3'b101;
+  localparam F3_SRAI = 3'b101;
+  localparam F3_ADD  = 3'b000;
+  localparam F3_SUB  = 3'b000;
+  localparam F3_SLL  = 3'b001;
+  localparam F3_SLT  = 3'b010;
+  localparam F3_SLTU = 3'b011;
+  localparam F3_XOR  = 3'b100;
+  localparam F3_SRL  = 3'b101;
+  localparam F3_SRA  = 3'b101;
+  localparam F3_OR   = 3'b110;
+  localparam F3_AND  = 3'b111;
+
+  // funct3 : OP_IMM
+  localparam F3_ADDI  = 3'b000;
+  localparam F3_SLTI  = 3'b010;
+  localparam F3_SLTIU = 3'b011;
+  localparam F3_XORI  = 3'b100;
+  localparam F3_ORI   = 3'b110;
+  localparam F3_ANDI  = 3'b111;
+
+  // dmem type load store
+  // (aka. funct3 : LOAD & STORE)
+  localparam LDST_B  = 3'b000;
+  localparam LDST_H  = 3'b001;
+  localparam LDST_W  = 3'b010;
+  localparam LDST_BU = 3'b100;
+  localparam LDST_HU = 3'b101;
+
+  // funct3 : BRANCH
+  localparam F3_BEQ  = 3'b000;
+  localparam F3_BNE  = 3'b001;
+  localparam F3_BLT  = 3'b100;
+  localparam F3_BGE  = 3'b101;
+  localparam F3_BLTU = 3'b110;
+  localparam F3_BGEU = 3'b111;
+
+  // funct3 : JALR
+  localparam F3_JALR = 3'b000;
+
+  // funct3 : MISC_MEM
+  localparam F3_FENCE = 3'b000;
+
+  // Fixed word instructions
+  localparam ECALL  = { 12'd0, 5'd0, 3'd0, 5'd0, SYSTEM_OPCODE, 2'b11 };
+  localparam EBREAK = { 12'd1, 5'd0, 3'd0, 5'd0, SYSTEM_OPCODE, 2'b11 };
+  localparam MRET   = { 7'b0011000, 5'b00010, 5'd0, 3'd0, 5'd0, SYSTEM_OPCODE, 2'b11 };
 
   /*
     Hack that makes nested opcodes be
