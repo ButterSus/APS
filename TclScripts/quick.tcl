@@ -7,23 +7,8 @@ set xdc_files  [lindex $argv 4]
 create_project -force quick ./quick_proj -part $fpga_part
 set_param general.maxThreads 8
 
-foreach src $src_files {
-    if {[file exists ../$src]} {
-        add_files -fileset sources_1  -norecurse ../$src
-    }
-}
-
-foreach mem $mem_files {
-    if {[file exists ../$mem]} {
-        add_files -fileset sources_1 -norecurse ../$mem
-    }
-}
-
-foreach xdc $xdc_files {
-    if {[file exists ../$xdc]} {
-        add_files -fileset constrs_1 -norecurse ../$xdc
-    }
-}
+add_files -fileset sources_1 -norecurse $src_files $mem_files
+add_files -fileset constrs_1 -norecurse $xdc_files
 
 set_property top $top_module [get_filesets sources_1]
 set_property source_mgmt_mode All [current_project]
