@@ -18,6 +18,16 @@ import memory_pkg::DATA_MEM_SIZE_WORDS;
 
   logic [31:0] ram [DATA_MEM_SIZE_WORDS];
 
+  // Funny fact: I initially forgot that original architecture was Harvard one
+  // (Instruction memory separate from data memory), so I was wondering why my
+  // program doesn't correctly fetch data from memory.
+
+  // Because of that, we also want to read data memory.
+
+  initial begin
+    $readmemh("data.mem", ram);
+  end
+
   always_ff @ (posedge clk_i)
     if (mem_req_i && ~write_enable_i)
       read_data_o <= ram [addr_i [Width - 1:2]];

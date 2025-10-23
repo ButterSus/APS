@@ -2,11 +2,23 @@
 # сортировки массива целых чисел (например, сортировка пузырьком
 # или вставками) в памяти и выводит отсортированный массив.
 
+# We must follow RVG (RISC-V General-purpose ISA) ABI (Application Binary Interface).
+# Also, we must follow GNU Assembly conventions such as default sections.
+
 .text
 .global _start
 _start:
-    li t0, 10       # загрузить 10 в регистр t0
-    li t1, 20       # загрузить 20 в t1
-    add t2, t0, t1 # t2 = t0 + t1 = 30
-    # дальше можно, например, остановить программу
-    ecall          # вызов ОС / симулятора
+    la t0, .string
+    .rinse_and_repeat:
+    lbu t1, (t0)
+    mv tp, t1
+    addi t0, t0, 1
+    bnez t1, .rinse_and_repeat
+    ebreak
+
+    # Since we don't have stdout, TX, or any stream output, we'll,
+    # instead, put everything to tp (x4 = "Thread pointer"), since
+    # it is not in use.
+
+.data
+    .string: .asciz "Hello, World!"

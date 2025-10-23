@@ -12,7 +12,7 @@ module instr_mem (
   logic [31:0] rom [INSTR_MEM_SIZE_WORDS];
 
   initial begin
-    $readmemh("program.mem", rom);
+    $readmemh("text.mem", rom);
   end
 
   assign read_data_o = rom [read_addr_i[Width - 1:2]];

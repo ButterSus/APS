@@ -67,7 +67,7 @@ program: --check_top
 			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/program.tcl)"
 		-tclargs out/$(TOP).bit
 
-sim: --check_tb | $(BUILD_DIR)
+sim: $(BUILT_ASM_FILES) --check_tb | $(BUILD_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source \
 			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl)" \
@@ -77,7 +77,7 @@ sim: --check_tb | $(BUILD_DIR)
 			 $(shell realpath --relative-to $(BUILD_DIR) $(BUILT_ASM_FILES))" \
 			"$(shell realpath --relative-to $(BUILD_DIR) $(TEST_FILES))"
 
-sim_gui: --check_tb | $(BUILD_DIR)
+sim_gui: $(BUILT_ASM_FILES) --check_tb | $(BUILD_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
 		-source \
 			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl)" \
@@ -88,7 +88,7 @@ sim_gui: --check_tb | $(BUILD_DIR)
 			"$(shell realpath --relative-to $(BUILD_DIR) $(TEST_FILES))" \
 			"$(shell realpath --relative-to=$(BUILD_DIR) $(TEST_DIR)/xsim.wcfg)"
 
-rtl: --check_top | $(BUILD_DIR)/out
+rtl: $(BUILT_ASM_FILES) --check_top | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
 		-source \
 			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/rtl.tcl)" \
@@ -126,7 +126,8 @@ $(ROUTE_DCP): $(PLACE_DCP) | $(BUILD_DIR)/out
 
 $(BUILD_DIR)/out/%.mem: $(SRC_DIR)/%.asm | $(BUILD_DIR)/out $(BUILD_DIR)/asm
 	$(RV32_GCC_BIN)/riscv32-unknown-elf-as -march=rv32i -o $(BUILD_DIR)/asm/$*.o $<
-	$(RV32_GCC_BIN)/riscv32-unknown-elf-ld -Ttext=0x0 -o $(BUILD_DIR)/asm/$*.elf $(BUILD_DIR)/asm/$*.o
+	$(RV32_GCC_BIN)/riscv32-unknown-elf-ld -T $(TCL_DIR)/rv32g.ld \
+		-o $(BUILD_DIR)/asm/$*.elf $(BUILD_DIR)/asm/$*.o
 	$(RV32_GCC_BIN)/riscv32-unknown-elf-objcopy -O binary $(BUILD_DIR)/asm/$*.elf $(BUILD_DIR)/asm/$*.bin
 	xxd -p -c 4 $(BUILD_DIR)/asm/$*.bin | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $(BUILD_DIR)/out/$*.mem
 
