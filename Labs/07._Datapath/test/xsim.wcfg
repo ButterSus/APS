@@ -15,15 +15,15 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="0fs"></ZoomStartTime>
-      <ZoomEndTime time="330501fs"></ZoomEndTime>
-      <Cursor1Time time="20000fs"></Cursor1Time>
+      <ZoomStartTime time="2075000fs"></ZoomStartTime>
+      <ZoomEndTime time="2410501fs"></ZoomEndTime>
+      <Cursor1Time time="1999657fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
-      <NameColumnWidth column_width="66"></NameColumnWidth>
-      <ValueColumnWidth column_width="66"></ValueColumnWidth>
+      <NameColumnWidth column_width="182"></NameColumnWidth>
+      <ValueColumnWidth column_width="84"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="5" />
+   <WVObjectSize size="12" />
    <wvobject type="logic" fp_name="/lab_07_tb_processor_system/clk">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -43,5 +43,36 @@
    <wvobject type="array" fp_name="/lab_07_tb_processor_system/DUT/core/i_rf/rf_mem[4]">
       <obj_property name="ElementShortName">[4][31:0]</obj_property>
       <obj_property name="ObjectShortName">[4][31:0]</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/lab_07_tb_processor_system/DUT/i_dm/clk_i">
+      <obj_property name="ElementShortName">clk_i</obj_property>
+      <obj_property name="ObjectShortName">clk_i</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/lab_07_tb_processor_system/DUT/i_dm/mem_req_i">
+      <obj_property name="ElementShortName">mem_req_i</obj_property>
+      <obj_property name="ObjectShortName">mem_req_i</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/lab_07_tb_processor_system/DUT/i_dm/write_enable_i">
+      <obj_property name="ElementShortName">write_enable_i</obj_property>
+      <obj_property name="ObjectShortName">write_enable_i</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/lab_07_tb_processor_system/DUT/i_dm/byte_enable_i">
+      <obj_property name="ElementShortName">byte_enable_i[3:0]</obj_property>
+      <obj_property name="ObjectShortName">byte_enable_i[3:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/lab_07_tb_processor_system/DUT/i_dm/addr_i">
+      <obj_property name="ElementShortName">addr_i[31:0]</obj_property>
+      <obj_property name="ObjectShortName">addr_i[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/lab_07_tb_processor_system/DUT/i_dm/write_data_i">
+      <obj_property name="ElementShortName">write_data_i[31:0]</obj_property>
+      <obj_property name="ObjectShortName">write_data_i[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/lab_07_tb_processor_system/DUT/i_dm/read_data_o">
+      <obj_property name="ElementShortName">read_data_o[31:0]</obj_property>
+      <obj_property name="ObjectShortName">read_data_o[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>
 </wave_config>

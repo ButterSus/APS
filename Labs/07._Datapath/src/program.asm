@@ -2,23 +2,70 @@
 # сортировки массива целых чисел (например, сортировка пузырьком
 # или вставками) в памяти и выводит отсортированный массив.
 
-# We must follow RVG (RISC-V General-purpose ISA) ABI (Application Binary Interface).
-# Also, we must follow GNU Assembly conventions such as default sections.
+# Inspired by: https: //marz.utk.edu/my-courses/cosc230/book/example-risc-v-assembly-programs/
 
-.text
-.global _start
+    .section .text
+    .global  _start
 _start:
-    la t0, .string
-    .rinse_and_repeat:
-    lbu t1, (t0)
-    mv tp, t1
-    addi t0, t0, 1
-    bnez t1, .rinse_and_repeat
+    la       sp, __stack_top
+
+# No need to save caller's variables, we're not inside of
+# function, we're inside of entry point of whole program
+    la       a0, array
+    li       a1, 4
+    call     sort_array
+
+    la       t0, array
+    lw       s0, 0(t0)
+    lw       s1, 4(t0)
+    lw       s2, 8(t0)
+    lw       s3, 12(t0)
+
     ebreak
 
-    # Since we don't have stdout, TX, or any stream output, we'll,
-    # instead, put everything to tp (x4 = "Thread pointer"), since
-    # it is not in use.
+sort_array: # Ah, my classic bubble sort from C
+# a0 = int a[]
+# a1 = int size
 
-.data
-    .string: .asciz "Hello, World!"
+# t0 = i
+# t1 = j
+# t2 = size_i
+# t3 = a + 4j
+# t4 = a [j]
+# t5 = a [j + 1]
+
+    li       t0, 0           # i = 0
+1: # for (int i = 0; i < size; i ++) {
+    bge      t0, a1, 1f      # if (i >= size) break;
+
+    addi     t2, a1, -1      # size_i = size - 1
+    sub      t2, t2, t0      # size_i -= i
+
+    li       t1, 0           # j = 0
+2: # for (int j = 0; j < size - i - 1; j ++) {
+    bge      t1, t2, 2f      # if (j >= size - i - 1)
+
+    slli     t3, t1, 2
+    add      t3, t3, a0
+    lw       t4, 0(t3)
+    lw       t5, 4(t3)
+3: # if (arr[j] > arr[j + 1]) {
+    ble      t4, t5, 3f      # if (arr[j] <= arr[j + 1]) break;
+
+    sw       t4, 4(t3)  # Swap elements directly in memory
+    sw       t5, 0(t3)  # So no need in temporaries
+
+3: # }
+
+    addi     t1, t1, 1
+    j        2b
+2: # }
+
+    addi     t0, t0, 1
+    j        1b
+1: # }
+    ret
+
+    .section .data
+array:
+    .word    10, 30, 20, 40

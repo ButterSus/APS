@@ -25,7 +25,7 @@ import memory_pkg::DATA_MEM_SIZE_WORDS;
   // Because of that, we also want to read data memory.
 
   initial begin
-    $readmemh("data.mem", ram);
+    $readmemh("program.ram.mem", ram);
   end
 
   always_ff @ (posedge clk_i)

@@ -21,25 +21,36 @@ module lab_07_tb_processor_system();
   initial clk = 0;
     always #10 clk = ~clk;
     initial begin
-      $display( "\nTest has been started.");
+      $display( "Test has been started.\n");
       rst = 1;
       #40;
       rst = 0;
-      #800;
-      $display("\n The test is over \n See the internal signals of the module on the waveform \n");
+
+      // Wait until either 12800 time units pass, or EBREAK instruction is seen
+      fork
+        begin
+          #12800;
+          $display("The test time limit reached. Ending simulation.\n");
+        end
+        begin
+          wait (DUT.core.instr_i == decoder_pkg::EBREAK);
+          $display("EBREAK detected, ending simulation early.\n");
+        end
+      join_any
       $finish;
+
       #5;
-        $display("You're trying to run simulation that has finished. Aborting simulation.");
+        $display("You're trying to run simulation that has finished. Aborting simulation.\n");
       $fatal();
   end
 
 stall_seq: assert property (
     @(posedge DUT.core.clk_i) disable iff ( DUT.core.rst_i )
     DUT.core.mem_req_o |-> (DUT.core.stall_i || $past(DUT.core.stall_i))
-)else $error("\nincorrect implementation of stall signal\n");
+)else $error("incorrect implementation of stall signal\n");
 
 stall_seq_fall: assert property (
   @(posedge DUT.core.clk_i) disable iff ( DUT.core.rst_i )
     (DUT.core.stall_i) |=> !DUT.core.stall_i
-)else $error("\nstall must fall exact one cycle after rising\n");
+)else $error("stall must fall exact one cycle after rising\n");
 endmodule
