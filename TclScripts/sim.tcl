@@ -8,9 +8,17 @@ set wave_cfg_path [lindex $argv 5]
 create_project -force sim ./sim_proj -part $fpga_part
 set_param general.maxThreads 8
 
-add_files -fileset sources_1 -norecurse $src_files
-add_files -fileset sources_1 -norecurse $mem_files
-add_files -fileset sim_1     -norecurse $test_files
+if {$src_files ne ""} {
+	add_files -fileset sources_1 -norecurse $src_files
+}
+
+if {$mem_files ne ""} {
+	add_files -fileset sources_1 -norecurse $mem_files
+}
+
+if {$test_files ne ""} {
+	add_files -fileset sim_1     -norecurse $test_files
+}
 
 set_property top $testbench [get_filesets sim_1]
 set_property source_mgmt_mode All [current_project]

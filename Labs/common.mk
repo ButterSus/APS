@@ -23,6 +23,20 @@ XDC_FILES  := $(call rwildcard, $(BOARD_DIR), *.xdc)
 MEM_FILES  := $(call rwildcard, $(SRC_DIR), *.mem)
 ASM_FILES  := $(call rwildcard, $(SRC_DIR), *.asm)
 
+define realpath_safe
+$(strip $(shell \
+  if [ -n "$1" ]; then \
+    printf '%s\n' $1 | xargs -I{} realpath --relative-to=$(BUILD_DIR) "{}"; \
+  fi))
+endef
+
+# Paths relative to $(BUILD_DIR)
+SRC_FILES_PATHS     := $(call realpath_safe,$(SRC_FILES))
+TEST_FILES_PATHS    := $(call realpath_safe,$(TEST_FILES))
+XDC_FILES_PATHS     := $(call realpath_safe,$(XDC_FILES))
+ALL_MEM_FILES_PATHS := $(call realpath_safe,$(MEM_FILES) $(BUILT_ASM_FILES_ROM) $(BUILT_ASM_FILES_RAM))
+XSIM_WCFG_PATH      := $(call realpath_safe,$(TEST_DIR)/xsim.wcfg)
+
 # Built Files
 BUILT_ASM_FILES := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.mem, $(ASM_FILES))
 BUILT_ASM_FILES_ROM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.rom.mem, $(ASM_FILES))
@@ -61,12 +75,8 @@ help:
 
 quick: --check_top | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/quick.tcl)" \
-		-tclargs $(TOP) $(FPGA_PART) \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(SRC_FILES))" \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(MEM_FILES))" \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(XDC_FILES))"
+		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/quick.tcl) \
+		-tclargs $(TOP) $(FPGA_PART) "$(SRC_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
 
 synth: $(SYNTH_DCP)
 
@@ -74,47 +84,30 @@ impl: $(ROUTE_DCP)
 
 bitstream: --check_top $(ROUTE_DCP) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/bitstream.tcl)"
+		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/bitstream.tcl) \
 		-tclargs $(TOP)
 
 program: --check_top
 	@test -f $(BUILD_DIR)/out/$(TOP).bit || (echo "Error: Bitstream not found. Run 'make bitstream TOP=$(TOP)' first"; exit 1)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/program.tcl)" \
+		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/program.tcl) \
 		-tclargs out/$(TOP).bit
 
 sim: $(BUILT_ASM_FILES) --check_tb | $(BUILD_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl)" \
-		-tclargs $(TB) $(FPGA_PART) \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(SRC_FILES))" \
-			"$(shell realpath --relative-to $(BUILD_DIR) \
-				$(MEM_FILES) $(BUILT_ASM_FILES_ROM) $(BUILT_ASM_FILES_RAM))" \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TEST_FILES))"
+		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl) \
+		-tclargs $(TB) $(FPGA_PART) "$(SRC_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(TEST_FILES_PATHS)"
 
 sim_gui: $(BUILT_ASM_FILES) --check_tb | $(BUILD_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
-		-source \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl)" \
-		-tclargs $(TB) $(FPGA_PART) \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(SRC_FILES))" \
-			"$(shell realpath --relative-to $(BUILD_DIR) \
-				$(MEM_FILES) $(BUILT_ASM_FILES_ROM) $(BUILT_ASM_FILES_RAM))" \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TEST_FILES))" \
-			"$(shell realpath --relative-to=$(BUILD_DIR) $(TEST_DIR)/xsim.wcfg)"
+		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl) \
+		-tclargs $(TB) $(FPGA_PART) "$(SRC_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" \
+			"$(TEST_FILES_PATHS)" "$(XSIM_WCFG_PATH)"
 
 rtl: $(BUILT_ASM_FILES) --check_top | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
-		-source \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/rtl.tcl)" \
-		-tclargs $(TOP) $(FPGA_PART) \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(SRC_FILES))" \
-			"$(shell realpath --relative-to $(BUILD_DIR) \
-				$(MEM_FILES) $(BUILT_ASM_FILES_ROM) $(BUILT_ASM_FILES_RAM))" \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(XDC_FILES))"
+		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/rtl.tcl) \
+		-tclargs $(TOP) $(FPGA_PART) "$(SRC_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
 
 asm: $(BUILT_ASM_FILES)
 
@@ -124,23 +117,16 @@ clean:
 # Implementation Stages
 $(SYNTH_DCP): --check_top $(SRC_FILES) $(MEM_FILES) $(BUILT_ASM_FILES) $(XDC_FILES) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/synth.tcl)" \
-		-tclargs $(TOP) $(FPGA_PART) \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(SRC_FILES))" \
-			"$(shell realpath --relative-to $(BUILD_DIR) \
-				$(MEM_FILES) $(BUILT_ASM_FILES_ROM) $(BUILT_ASM_FILES_RAM))" \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(XDC_FILES))"
+		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/synth.tcl) \
+		-tclargs $(TOP) $(FPGA_PART) "$(SRC_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
 
 $(PLACE_DCP): $(SYNTH_DCP) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/place.tcl)"
+		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/place.tcl)
 
 $(ROUTE_DCP): $(PLACE_DCP) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source \
-			"$(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/route.tcl)"
+		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/route.tcl)
 
 # This task will produce both normal mem images, and separated hardvard ones
 $(BUILD_DIR)/out/%.mem: $(SRC_DIR)/%.asm | $(BUILD_DIR)/out $(BUILD_DIR)/asm

@@ -6,9 +6,17 @@ set xdc_files  [lindex $argv 4]
 
 create_project -force rtl ./rtl_proj -part $fpga_part
 
-add_files -fileset sources_1 -norecurse $src_files
-add_files -fileset sources_1 -norecurse $mem_files
-add_files -fileset constrs_1 -norecurse $xdc_files
+if {$src_files ne ""} {
+    add_files -fileset sources_1 -norecurse $src_files
+}
+
+if {$mem_files ne ""} {
+    add_files -fileset sources_1 -norecurse $mem_files
+}
+
+if {$xdc_files ne ""} {
+    add_files -fileset constrs_1 -norecurse $xdc_files
+}
 
 set_property top $top_module [get_filesets sources_1]
 set_property source_mgmt_mode All [current_project]
