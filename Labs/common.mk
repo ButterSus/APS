@@ -30,17 +30,17 @@ $(strip $(shell \
   fi))
 endef
 
+# Built Files
+BUILT_ASM_FILES := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.mem, $(ASM_FILES))
+BUILT_ASM_FILES_ROM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.rom.mem, $(ASM_FILES))
+BUILT_ASM_FILES_RAM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.ram.mem, $(ASM_FILES))
+
 # Paths relative to $(BUILD_DIR)
 SRC_FILES_PATHS     := $(call realpath_safe,$(SRC_FILES))
 TEST_FILES_PATHS    := $(call realpath_safe,$(TEST_FILES))
 XDC_FILES_PATHS     := $(call realpath_safe,$(XDC_FILES))
 ALL_MEM_FILES_PATHS := $(call realpath_safe,$(MEM_FILES) $(BUILT_ASM_FILES_ROM) $(BUILT_ASM_FILES_RAM))
 XSIM_WCFG_PATH      := $(call realpath_safe,$(TEST_DIR)/xsim.wcfg)
-
-# Built Files
-BUILT_ASM_FILES := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.mem, $(ASM_FILES))
-BUILT_ASM_FILES_ROM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.rom.mem, $(ASM_FILES))
-BUILT_ASM_FILES_RAM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.ram.mem, $(ASM_FILES))
 
 # Help function
 .PHONY: help
