@@ -63,10 +63,6 @@ module csr_controller (
       mcause_csr        <= 32'd0;
     end
     else if (trap_i) begin
-      // This is not the best approach, but I preferred it over
-      // nesting multiple cases or using ternaries below. You can run
-      // $make rtl TOP=csr_controller to see what I'm talking about.
-
       mepc_csr   <= pc_i;
       mcause_csr <= mcause_i;
     end

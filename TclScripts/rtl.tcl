@@ -24,4 +24,4 @@ set_property source_mgmt_mode All [current_project]
 update_compile_order -fileset sources_1
 
 synth_design -rtl -name rtl_1
-show_schematic [get_cells]
+# show_schematic [get_cells]

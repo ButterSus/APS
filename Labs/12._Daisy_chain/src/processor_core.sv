@@ -5,13 +5,15 @@ module processor_core (
   input  logic        stall_i,
   input  logic [31:0] instr_i,
   input  logic [31:0] mem_rd_i,
+  input  logic [15:0] irq_req_i,
 
   output logic [31:0] instr_addr_o,
   output logic [31:0] mem_addr_o,
   output logic [ 2:0] mem_size_o,
   output logic        mem_req_o,
   output logic        mem_we_o,
-  output logic [31:0] mem_wd_o
+  output logic [31:0] mem_wd_o,
+  output logic [15:0] irq_ret_o
 );
 
   // -----------------
@@ -25,6 +27,10 @@ module processor_core (
   assign rs1 = instr_i [19:15];
   assign rd  = instr_i [11: 7];
 
+  wire [11:0] csr;
+
+  assign csr = instr_i [31:20];
+
   // ---------------------
   // Immediates extraction
 
@@ -33,6 +39,7 @@ module processor_core (
   wire [31:0] imm_S;
   wire [31:0] imm_B;
   wire [31:0] imm_J;
+  wire [31:0] imm_Z;
 
   assign imm_I [11: 0] = instr_i [31:20];
   assign imm_I [31:12] = { 20 { imm_I [11] } };
@@ -58,14 +65,22 @@ module processor_core (
   assign imm_J [   20] = instr_i [   31];
   assign imm_J [31:21] = { 19 { imm_J [20] } };
 
+  assign imm_Z [ 4: 0] = instr_i [19:15];
+  assign imm_Z [31: 5] = { 27 { imm_Z [4] } };
+
   // ----------------
   // Variable defines
+
+  wire trap;
 
   wire [ 1:0] dcd_a_sel;
   wire [ 2:0] dcd_b_sel;
   wire [ 4:0] dcd_alu_op;
   wire [ 2:0] dcd_csr_op;
   wire        dcd_csr_we;
+  wire        dcd_mem_req;
+  wire        dcd_mem_we;
+  wire [ 2:0] dcd_mem_size;
   wire        dcd_gpr_we;
   wire [ 1:0] dcd_wb_sel;
   wire        dcd_illegal_instr;
@@ -73,6 +88,15 @@ module processor_core (
   wire        dcd_jal;
   wire        dcd_jalr;
   wire        dcd_mret;
+
+  wire [15:0] ic_irq_ret;
+  wire [31:0] ic_irq_cause;
+  wire        ic_irq;
+
+  wire [31:0] cc_read_data;
+  wire [31:0] cc_mie;
+  wire [31:0] cc_mepc;
+  wire [31:0] cc_mtvec;
 
   wire [31:0] rf_read_data1;
   wire [31:0] rf_read_data2;
@@ -90,9 +114,9 @@ module processor_core (
     .alu_op_o        ( dcd_alu_op        ),
     .csr_op_o        ( dcd_csr_op        ),
     .csr_we_o        ( dcd_csr_we        ),
-    .mem_req_o       ( mem_req_o         ),
-    .mem_we_o        ( mem_we_o          ),
-    .mem_size_o      ( mem_size_o        ),
+    .mem_req_o       ( dcd_mem_req       ),
+    .mem_we_o        ( dcd_mem_we        ),
+    .mem_size_o      ( dcd_mem_size      ),
     .gpr_we_o        ( dcd_gpr_we        ),
     .wb_sel_o        ( dcd_wb_sel        ),
     .illegal_instr_o ( dcd_illegal_instr ),
@@ -102,14 +126,65 @@ module processor_core (
     .mret_o          ( dcd_mret          )
   );
 
+  // ---------------------------
+  // Interrupts controller logic
+
+  assign trap = irq_req_i | dcd_illegal_instr;
+
+  interrupt_controller i_ic
+  (
+    .clk_i       ( clk_i              ),
+    .rst_i       ( rst_i              ),
+    .exception_i ( dcd_illegal_instr  ),
+    .irq_req_i   ( irq_req_i          ),
+    .mie_i       ( cc_mie     [31:16] ),
+    .mret_i      ( dcd_mret           ),
+    .irq_ret_o   ( ic_irq_ret [15: 0] ),
+    .irq_cause_o ( ic_irq_cause       ),
+    .irq_o       ( ic_irq             )
+  );
+
+  // ------------------------------
+  // Control status registers logic
+
+  wire [31:0] cc_mcause;
+
+  assign cc_mcause = dcd_illegal_instr ? 32'h0000_0002 : ic_irq_cause;
+
+  csr_controller i_cc
+  (
+    .clk_i          ( clk_i         ),
+    .rst_i          ( rst_i         ),
+    .trap_i         ( trap          ),
+    .opcode_i       ( dcd_csr_op    ),
+    .addr_i         ( csr           ),
+    .pc_i           ( pc_r          ),
+    .mcause_i       ( cc_mcause     ),
+    .rs1_data_i     ( rf_read_data1 ),
+    .imm_data_i     ( imm_Z         ),
+    .write_enable_i ( dcd_csr_we    ),
+    .read_data_o    ( cc_read_data  ),
+    .mie_o          ( cc_mie        ),
+    .mepc_o         ( cc_mepc       ),
+    .mtvec_o        ( cc_mtvec      )
+  );
+
   // -------------------
   // Register file logic
 
   wire rf_we;
-  wire [31:0] rf_write_data;
+  logic [31:0] rf_write_data;
 
-  assign rf_we = dcd_gpr_we & ~ stall_i;
-  assign rf_write_data = dcd_wb_sel ? mem_rd_i : alu_result;
+  assign rf_we = dcd_gpr_we &~ (stall_i | trap);
+
+  always_comb
+    case (dcd_wb_sel)
+      2'd0 : rf_write_data = alu_result;
+      2'd1 : rf_write_data = mem_rd_i;
+      2'd2 : rf_write_data = cc_read_data;
+
+      default : rf_write_data = 32'dx;
+    endcase
 
   register_file i_rf
   (
@@ -170,18 +245,23 @@ module processor_core (
                       ? (dcd_branch ? imm_B : imm_J)
                       : 32'd4;
 
-  always_comb
-    case (dcd_jalr)
-      1'b0 : pc_next = pc_r + pc_offset;
-      1'b1 : pc_next = rf_read_data1 + imm_I;
+  always_comb begin
+    pc_next = pc_r + pc_offset;
 
-      default :;
-    endcase
+    if (dcd_jalr)
+      pc_next = rf_read_data1 + imm_I;
+
+    if (trap)
+      pc_next = cc_mtvec;
+
+    if (dcd_mret)
+      pc_next = cc_mepc;
+  end
 
   always_ff @ (posedge clk_i)
     if (rst_i)
       pc_r <= 32'd0;
-    else if (~ stall_i)
+    else if (~ stall_i | trap)
       pc_r <= pc_next;
 
   // ------------
@@ -189,6 +269,10 @@ module processor_core (
 
   assign instr_addr_o = pc_r;
   assign mem_addr_o   = alu_result;
+  assign mem_size_o   = dcd_mem_size;
+  assign mem_req_o    = dcd_mem_req &~ trap;
+  assign mem_we_o     = dcd_mem_we  &~ trap;
   assign mem_wd_o     = rf_read_data2;
+  assign irq_ret_o    = ic_irq_ret;
 
 endmodule

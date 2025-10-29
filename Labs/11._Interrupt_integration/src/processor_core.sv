@@ -98,6 +98,9 @@ module processor_core (
   wire [31:0] cc_mepc;
   wire [31:0] cc_mtvec;
 
+  wire [31:0] rf_read_data1;
+  wire [31:0] rf_read_data2;
+
   logic [31:0] pc_r, pc_next;
 
   // -------------
@@ -182,9 +185,6 @@ module processor_core (
 
       default : rf_write_data = 32'dx;
     endcase
-
-  wire [31:0] rf_read_data1;
-  wire [31:0] rf_read_data2;
 
   register_file i_rf
   (
