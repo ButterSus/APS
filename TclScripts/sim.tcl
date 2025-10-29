@@ -35,7 +35,7 @@ launch_simulation
 set_property -name {xsim.simulate.runtime} -value {1s} -objects [get_filesets sim_1]
 
 # Log everything by default
-log_wave -recursive *
+log_wave -recursive /*
 
 run all
 

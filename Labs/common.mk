@@ -34,6 +34,7 @@ endef
 BUILT_ASM_FILES := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.mem, $(ASM_FILES))
 BUILT_ASM_FILES_ROM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.rom.mem, $(ASM_FILES))
 BUILT_ASM_FILES_RAM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.ram.mem, $(ASM_FILES))
+BUILT_DISASM_FILES := $(patsubst $(SRC_DIR)/%.mem, $(BUILD_DIR)/disasm/%.disasm, $(MEM_FILES))
 
 # Paths relative to $(BUILD_DIR)
 SRC_FILES_PATHS     := $(call realpath_safe,$(SRC_FILES))
@@ -71,7 +72,7 @@ help:
 	@test -n "$(TB)" || (echo "Error: TB testbench required. Usage: make <target> TB=testbench_name"; exit 1)
 
 # Main Targets
-.PHONY: quick synth impl bitstream program sim sim_gui rtl asm clean
+.PHONY: quick synth impl bitstream program sim sim_gui rtl asm disasm clean
 
 quick: --check_top | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
@@ -111,6 +112,8 @@ rtl: $(BUILT_ASM_FILES) --check_top | $(BUILD_DIR)/out
 
 asm: $(BUILT_ASM_FILES)
 
+disasm: $(BUILT_DISASM_FILES)
+
 clean:
 	rm -rf $(BUILD_DIR)
 
@@ -129,7 +132,7 @@ $(ROUTE_DCP): $(PLACE_DCP) | $(BUILD_DIR)/out
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/route.tcl)
 
 # This task will produce both normal mem images, and separated hardvard ones
-$(BUILD_DIR)/out/%.mem: $(SRC_DIR)/%.asm | $(BUILD_DIR)/out $(BUILD_DIR)/asm
+$(BUILD_DIR)/out/%.mem: $(ASM_FILES) | $(BUILD_DIR)/out $(BUILD_DIR)/asm
 	$(RV32_GCC_BIN)/riscv32-unknown-elf-as -march=rv32i -o $(BUILD_DIR)/asm/$*.o $<
 	$(RV32_GCC_BIN)/riscv32-unknown-elf-ld -T $(TCL_DIR)/rv32g_harvard.ld \
 		-o $(BUILD_DIR)/asm/$*.elf $(BUILD_DIR)/asm/$*.o
@@ -144,6 +147,10 @@ $(BUILD_DIR)/out/%.mem: $(SRC_DIR)/%.asm | $(BUILD_DIR)/out $(BUILD_DIR)/asm
 	xxd -p -c 4 $(BUILD_DIR)/asm/$*.rom.bin | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $(BUILD_DIR)/out/$*.rom.mem
 	xxd -p -c 4 $(BUILD_DIR)/asm/$*.ram.bin | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $(BUILD_DIR)/out/$*.ram.mem
 
+$(BUILD_DIR)/disasm/%.disasm: $(MEM_FILES) | $(BUILD_DIR)/disasm
+	awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' $< | xxd -r -p > $(BUILD_DIR)/disasm/$*.bin
+	$(RV32_GCC_BIN)/riscv32-unknown-elf-objdump -D -b binary -m riscv:rv32 $(BUILD_DIR)/disasm/$*.bin > $@
+
 # Directory Creation
-$(BUILD_DIR) $(BUILD_DIR)/out $(BUILD_DIR)/asm:
+$(BUILD_DIR) $(BUILD_DIR)/out $(BUILD_DIR)/asm $(BUILD_DIR)/disasm:
 	mkdir -p $@
