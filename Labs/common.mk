@@ -25,16 +25,19 @@ ASM_FILES  := $(call rwildcard, $(SRC_DIR), *.asm)
 
 define realpath_safe
 $(strip $(shell \
-  if [ -n "$1" ]; then \
-    printf '%s\n' $1 | xargs -I{} realpath --relative-to=$(BUILD_DIR) "{}"; \
+  trimmed=$$(echo $1 | xargs); \
+  if [ -z "$$trimmed" ]; then \
+    printf ''; \
+  else \
+    realpath -m --relative-to=$(BUILD_DIR) $1; \
   fi))
 endef
 
 # Built Files
-BUILT_ASM_FILES := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.mem, $(ASM_FILES))
+BUILT_ASM_FILES     := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.mem, $(ASM_FILES))
 BUILT_ASM_FILES_ROM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.rom.mem, $(ASM_FILES))
 BUILT_ASM_FILES_RAM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.ram.mem, $(ASM_FILES))
-BUILT_DISASM_FILES := $(patsubst $(SRC_DIR)/%.mem, $(BUILD_DIR)/disasm/%.disasm, $(MEM_FILES))
+BUILT_DISASM_FILES  := $(patsubst $(SRC_DIR)/%.mem, $(BUILD_DIR)/disasm/%.disasm, $(MEM_FILES))
 
 # Paths relative to $(BUILD_DIR)
 SRC_FILES_PATHS     := $(call realpath_safe,$(SRC_FILES))
@@ -132,7 +135,9 @@ $(ROUTE_DCP): $(PLACE_DCP) | $(BUILD_DIR)/out
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/route.tcl)
 
 # This task will produce both normal mem images, and separated hardvard ones
-$(BUILD_DIR)/out/%.mem: $(ASM_FILES) | $(BUILD_DIR)/out $(BUILD_DIR)/asm
+$(BUILD_DIR)/out/%.mem: $(ASM_FILES) | $(BUILD_DIR)/out
+	mkdir -p $(dir $(BUILD_DIR)/asm/$*)
+	mkdir -p $(dir $(BUILD_DIR)/out/$*)
 	$(RV32_GCC_BIN)/riscv32-unknown-elf-as -march=rv32i -o $(BUILD_DIR)/asm/$*.o $<
 	$(RV32_GCC_BIN)/riscv32-unknown-elf-ld -T $(TCL_DIR)/rv32g_harvard.ld \
 		-o $(BUILD_DIR)/asm/$*.elf $(BUILD_DIR)/asm/$*.o
@@ -152,5 +157,5 @@ $(BUILD_DIR)/disasm/%.disasm: $(MEM_FILES) | $(BUILD_DIR)/disasm
 	$(RV32_GCC_BIN)/riscv32-unknown-elf-objdump -D -b binary -m riscv:rv32 $(BUILD_DIR)/disasm/$*.bin > $@
 
 # Directory Creation
-$(BUILD_DIR) $(BUILD_DIR)/out $(BUILD_DIR)/asm $(BUILD_DIR)/disasm:
+$(BUILD_DIR) $(BUILD_DIR)/out $(BUILD_DIR)/disasm:
 	mkdir -p $@
