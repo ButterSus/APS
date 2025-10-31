@@ -129,7 +129,7 @@ module processor_core (
   // ---------------------------
   // Interrupts controller logic
 
-  assign trap = irq_req_i | dcd_illegal_instr;
+  assign trap = ic_irq | dcd_illegal_instr;
 
   interrupt_controller i_ic
   (
