@@ -135,7 +135,7 @@ $(ROUTE_DCP): $(PLACE_DCP) | $(BUILD_DIR)/out
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/route.tcl)
 
 # This task will produce both normal mem images, and separated hardvard ones
-$(BUILD_DIR)/out/%.mem: $(ASM_FILES) | $(BUILD_DIR)/out
+$(BUILD_DIR)/out/%.mem: $(SRC_DIR)/%.asm | $(BUILD_DIR)/out
 	mkdir -p $(dir $(BUILD_DIR)/asm/$*)
 	mkdir -p $(dir $(BUILD_DIR)/out/$*)
 	$(RV32_GCC_BIN)/riscv32-unknown-elf-as -march=rv32i -o $(BUILD_DIR)/asm/$*.o $<
@@ -152,10 +152,11 @@ $(BUILD_DIR)/out/%.mem: $(ASM_FILES) | $(BUILD_DIR)/out
 	xxd -p -c 4 $(BUILD_DIR)/asm/$*.rom.bin | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $(BUILD_DIR)/out/$*.rom.mem
 	xxd -p -c 4 $(BUILD_DIR)/asm/$*.ram.bin | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $(BUILD_DIR)/out/$*.ram.mem
 
-$(BUILD_DIR)/disasm/%.disasm: $(MEM_FILES) | $(BUILD_DIR)/disasm
+$(BUILD_DIR)/disasm/%.disasm: $(SRC_DIR)/%.mem
+	mkdir -p $(dir $(BUILD_DIR)/disasm/$*)
 	awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' $< | xxd -r -p > $(BUILD_DIR)/disasm/$*.bin
 	$(RV32_GCC_BIN)/riscv32-unknown-elf-objdump -D -b binary -m riscv:rv32 $(BUILD_DIR)/disasm/$*.bin > $@
 
 # Directory Creation
-$(BUILD_DIR) $(BUILD_DIR)/out $(BUILD_DIR)/disasm:
+$(BUILD_DIR) $(BUILD_DIR)/out:
 	mkdir -p $@

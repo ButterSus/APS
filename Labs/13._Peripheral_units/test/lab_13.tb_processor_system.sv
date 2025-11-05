@@ -28,7 +28,7 @@ logic        tx_o;
 initial begin clk_i = 0; end
 always #5ns clk_i = ~clk_i;
 
-initial #4ms $finish();
+initial #5ms $finish();
 
 initial begin
   resetn = 1;
@@ -57,10 +57,18 @@ initial begin: sw_block
   sw_i = 16'hdead;
   repeat(1000) @(posedge clk_i);
   sw_i = 16'h5555;
+  repeat(1000) begin
+    repeat(1) @(posedge clk_i);
+    sw_i = 16'hbeef;
+    repeat(1) @(posedge clk_i);
+    sw_i = 16'h1111;
+    repeat(1) @(posedge clk_i);
+    sw_i = 16'hbeef;
+  end
   repeat(1000) @(posedge clk_i);
-  sw_i = 16'hbeef;
+  sw_i = 16'hfafa;
   repeat(1000) @(posedge clk_i);
-  sw_i = 16'haaaa;
+  sw_i = 16'hbaba;
 end
 
 initial begin: ps2_initial_block

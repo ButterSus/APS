@@ -10,15 +10,27 @@ See https://github.com/MPSU/APS/blob/master/LICENSE file for licensing details.
 */
 package peripheral_pkg;
 
-  localparam DMEM_ADDR_HIGH   = 8'h00;
-  localparam SW_ADDR_HIGH     = 8'h01;
-  localparam LED_ADDR_HIGH    = 8'h02;
-  localparam PS2_ADDR_HIGH    = 8'h03;
-  localparam HEX_ADDR_HIGH    = 8'h04;
-  localparam RX_ADDR_HIGH     = 8'h05;
-  localparam TX_ADDR_HIGH     = 8'h06;
-  localparam VGA_ADDR_HIGH    = 8'h07;
-  localparam TIMER_ADDR_HIGH  = 8'h08;
+  localparam DMEM_ADDR_HIGH  = 8'h00;
+  localparam SW_ADDR_HIGH    = 8'h01;
+  localparam LED_ADDR_HIGH   = 8'h02;
+  localparam PS2_ADDR_HIGH   = 8'h03;
+  localparam HEX_ADDR_HIGH   = 8'h04;
+  localparam RX_ADDR_HIGH    = 8'h05;
+  localparam TX_ADDR_HIGH    = 8'h06;
+  localparam VGA_ADDR_HIGH   = 8'h07;
+  localparam TIMER_ADDR_HIGH = 8'h08;
+
+  // We can assign different interrupt bits to each
+  // peripheral that can produce interrupts
+  // localparam int SW_INT_IDX      = 1;
+  // localparam int PS2_INT_IDX     = 3;
+  // localparam int UART_RX_INT_IDX = 5;
+  // localparam int TIMER_INT_IDX   = 8;
+
+  localparam int SW_INT_IDX      = 2;
+  localparam int PS2_INT_IDX     = 1 /* STUB */;
+  localparam int UART_RX_INT_IDX = 0 /* STUB */;
+  localparam int TIMER_INT_IDX   = 3 /* STUB */;
 
   task automatic ps2_send_scan_code(input logic [7:0] code, ref logic ps2_clk, ref logic ps2_dat);
     logic [11:0] data = {2'b11, !(^code), code, 1'b0};
