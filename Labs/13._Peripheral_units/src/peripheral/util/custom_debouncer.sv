@@ -1,4 +1,4 @@
-module debouncer #(
+module custom_debouncer #(
     parameter int COUNT_MAX = 10000,  // For 10 MHz, it will be 1 ms
     parameter int WIDTH     = 1
 ) (

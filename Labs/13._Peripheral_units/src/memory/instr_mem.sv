@@ -9,12 +9,8 @@ module instr_mem (
 
   logic [31:0] rom [INSTR_MEM_SIZE_WORDS];
 
-  // initial begin
-  //   $readmemh("program.rom.mem", rom);
-  // end
-
   initial begin
-    $readmemh("lab_13_rx_led_instr.mem", rom);
+    $readmemh("lab_13_ps2_vga_instr.mem", rom);
   end
 
   assign read_data_o = rom [read_addr_i[Width - 1:2]];

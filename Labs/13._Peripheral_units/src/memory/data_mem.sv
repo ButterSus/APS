@@ -24,9 +24,9 @@ import memory_pkg::DATA_MEM_SIZE_WORDS;
 
   // Because of that, we also want to read data memory.
 
-  // initial begin
-  //   $readmemh("program.ram.mem", ram);
-  // end
+  initial begin
+    $readmemh("lab_13_ps2ascii_data.mem", ram);
+  end
 
   always_ff @ (posedge clk_i)
     if (mem_req_i && ~write_enable_i)

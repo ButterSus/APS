@@ -7,7 +7,7 @@
     .section .text
     .global  _start
 _start:
-    la       sp, __stack_top
+    la       sp, _stack_ptr
 
 # No need to save caller's variables, we're not inside of
 # function, we're inside of entry point of whole program

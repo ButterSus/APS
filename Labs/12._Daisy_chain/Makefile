@@ -1,5 +1,5 @@
 # Directories
-SRC_DIR   := src
+RTL_DIR   := src
 TEST_DIR  := test
 BOARD_DIR := board_files
 BUILD_DIR := build

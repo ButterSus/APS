@@ -1,0 +1,32 @@
+[
+  {
+    "arguments": [
+      "/home/buttersus/Dev/riscv/bin/riscv32-unknown-elf-g++",
+      "-march=rv32i_zicsr",
+      "-mabi=ilp32",
+      "-Iinclude",
+      "-c",
+      "-o",
+      "build/firmware/main.o",
+      "src/startup.S"
+    ],
+    "directory": "/home/buttersus/remote-rtl/APS/Labs/14._Programming",
+    "file": "/home/buttersus/remote-rtl/APS/Labs/14._Programming/src/startup.S",
+    "output": "/home/buttersus/remote-rtl/APS/Labs/14._Programming/build/firmware/main.o"
+  },
+  {
+    "arguments": [
+      "/home/buttersus/Dev/riscv/bin/riscv32-unknown-elf-g++",
+      "-march=rv32i_zicsr",
+      "-mabi=ilp32",
+      "-Iinclude",
+      "-c",
+      "-o",
+      "build/firmware/main.o",
+      "src/main.c"
+    ],
+    "directory": "/home/buttersus/remote-rtl/APS/Labs/14._Programming",
+    "file": "/home/buttersus/remote-rtl/APS/Labs/14._Programming/src/main.c",
+    "output": "/home/buttersus/remote-rtl/APS/Labs/14._Programming/build/firmware/main.o"
+  }
+]

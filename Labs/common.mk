@@ -1,12 +1,46 @@
+# MIT License
+#
+# Copyright (c) 2025 Krivoshapkin Eduard
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
 # Vivado Build System
 # Usage: make [target] TOP=module_name [options]
 #        make [target] TB=module_name [options]
 
 VIVADO_BIN := /tools/Xilinx/Vivado/2019.2/bin
+ifeq ($(strip $(MACHINE)),1)
+RV32_GCC_BIN = /home/buttersus/Dev/riscv/bin
+else
 RV32_GCC_BIN = /tools/riscv-dv/riscv-gnu-toolchain/build/riscv32/bin
+endif
 
 # FPGA Configuration
 FPGA_PART := xc7a100tcsg324-1
+ifeq ($(strip $(MACHINE)),1)
+CFLAGS  := -march=rv32i_zicsr -mabi=ilp32 -Wl,--gc-sections -nostartfiles
+CXXFLAGS  := -march=rv32i_zicsr -mabi=ilp32 -Wl,--gc-sections -nostartfiles
+else
+CFLAGS  := -march=rv32i -mabi=ilp32 -Wl,--gc-sections -nostartfiles
+CXXFLAGS  := -march=rv32i -mabi=ilp32 -Wl,--gc-sections -nostartfiles
+endif
 
 # Build Targets
 SYNTH_DCP := $(BUILD_DIR)/out/synth.dcp
@@ -14,14 +48,23 @@ PLACE_DCP := $(BUILD_DIR)/out/place.dcp
 ROUTE_DCP := $(BUILD_DIR)/out/route.dcp
 
 # Utilities
-rwildcard = $(foreach d,$(wildcard $(1)/*),$(call rwildcard,$d,$2)) $(filter $(subst *,%,$2),$(wildcard $(1)/$(2)))
+define rwildcard
+  $(if $(strip $1), \
+    $(foreach d,$(wildcard $(1)/*),$(call rwildcard,$d,$2)) \
+    $(filter $(subst *,%,$2),$(wildcard $(1)/$(2))) \
+  )
+endef
 
 # Source Files
-SRC_FILES  := $(call rwildcard, $(SRC_DIR), *.sv) $(call rwildcard, $(SRC_DIR), *.v) $(call rwildcard, $(BOARD_DIR), *.sv) $(call rwildcard, $(BOARD_DIR), *.v)
+RTL_FILES  := $(call rwildcard, $(RTL_DIR), *.sv) $(call rwildcard, $(RTL_DIR), *.v) $(call rwildcard, $(BOARD_DIR), *.sv) $(call rwildcard, $(BOARD_DIR), *.v)
 TEST_FILES := $(call rwildcard, $(TEST_DIR), *.sv) $(call rwildcard, $(TEST_DIR), *.v)
 XDC_FILES  := $(call rwildcard, $(BOARD_DIR), *.xdc)
-MEM_FILES  := $(call rwildcard, $(SRC_DIR), *.mem)
-ASM_FILES  := $(call rwildcard, $(SRC_DIR), *.asm)
+MEM_FILES  := $(call rwildcard, $(RTL_DIR), *.mem)
+ASM_FILES  := $(call rwildcard, $(RTL_DIR), *.asm)
+STARTUP_FILE := $(SRC_DIR)/startup.S
+C_FILES      := $(call rwildcard, $(SRC_DIR), *.c)
+CPP_FILES    := $(call rwildcard, $(SRC_DIR), *.cpp)
+INC_FILES    := $(call rwildcard, $(INC_DIR), *.h) $(call rwildcard, $(INC_DIR), *.hpp)
 
 define realpath_safe
 $(strip $(shell \
@@ -33,18 +76,47 @@ $(strip $(shell \
   fi))
 endef
 
+# Intermediate and output dirs
+ASM_DIR = $(BUILD_DIR)/asm
+OUT_DIR = $(BUILD_DIR)/out
+FIRMWARE_DIR = $(BUILD_DIR)/firmware
+
 # Built Files
-BUILT_ASM_FILES     := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.mem, $(ASM_FILES))
-BUILT_ASM_FILES_ROM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.rom.mem, $(ASM_FILES))
-BUILT_ASM_FILES_RAM := $(patsubst $(SRC_DIR)/%.asm, $(BUILD_DIR)/out/%.ram.mem, $(ASM_FILES))
-BUILT_DISASM_FILES  := $(patsubst $(SRC_DIR)/%.mem, $(BUILD_DIR)/disasm/%.disasm, $(MEM_FILES))
+BUILT_ASM_FILES := $(patsubst $(RTL_DIR)/%.asm, $(OUT_DIR)/%.rom.mem, $(ASM_FILES)) \
+				   $(patsubst $(RTL_DIR)/%.asm, $(OUT_DIR)/%.ram.mem, $(ASM_FILES))
+ifeq ($(strip $(FIRMWARE_NAME)),)
+  BUILT_FIRMWARE_FILES :=
+else
+  BUILT_FIRMWARE_FILES := $(OUT_DIR)/$(FIRMWARE_NAME).rom.mem $(OUT_DIR)/$(FIRMWARE_NAME).ram.mem
+endif
+ALL_MEM_FILES := $(MEM_FILES) $(BUILT_ASM_FILES) $(BUILT_FIRMWARE_FILES)
+OBJ_FILES := $(patsubst $(SRC_DIR)/%.S,$(FIRMWARE_DIR)/%.S.o,$(STARTUP_FILE)) \
+             $(patsubst $(SRC_DIR)/%.c,$(FIRMWARE_DIR)/%.c.o,$(C_FILES)) \
+			 $(patsubst $(SRC_DIR)/%.cpp,$(FIRMWARE_DIR)/%.cpp.o,$(CPP_FILES))
+$(info $$OBJ_FILES is [$(OBJ_FILES)])
+
 
 # Paths relative to $(BUILD_DIR)
-SRC_FILES_PATHS     := $(call realpath_safe,$(SRC_FILES))
+RTL_FILES_PATHS     := $(call realpath_safe,$(RTL_FILES))
 TEST_FILES_PATHS    := $(call realpath_safe,$(TEST_FILES))
 XDC_FILES_PATHS     := $(call realpath_safe,$(XDC_FILES))
-ALL_MEM_FILES_PATHS := $(call realpath_safe,$(MEM_FILES) $(BUILT_ASM_FILES_ROM) $(BUILT_ASM_FILES_RAM))
 XSIM_WCFG_PATH      := $(call realpath_safe,$(TEST_DIR)/xsim.wcfg)
+ALL_MEM_FILES_PATHS := $(call realpath_safe,$(MEM_FILES) $(BUILT_ASM_FILES) $(BUILT_FIRMWARE_FILES))
+
+# Tool prefixes
+AS      = $(RV32_GCC_BIN)/riscv32-unknown-elf-as
+GCC     = $(RV32_GCC_BIN)/riscv32-unknown-elf-gcc
+G++     = $(RV32_GCC_BIN)/riscv32-unknown-elf-g++
+LD      = $(RV32_GCC_BIN)/riscv32-unknown-elf-ld
+OBJDUMP = $(RV32_GCC_BIN)/riscv32-unknown-elf-objdump
+OBJCOPY = $(RV32_GCC_BIN)/riscv32-unknown-elf-objcopy
+READELF = readelf
+
+
+# PHONY TARGETS (Always rebuild)
+# -------------
+
+# Most of these just invoke TCL scripts.
 
 # Help function
 .PHONY: help
@@ -77,10 +149,10 @@ help:
 # Main Targets
 .PHONY: quick synth impl bitstream program sim sim_gui rtl asm disasm clean
 
-quick: --check_top | $(BUILD_DIR)/out
+quick: $(ALL_MEM_FILES) --check_top | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/quick.tcl) \
-		-tclargs $(TOP) $(FPGA_PART) "$(SRC_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
+		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
 
 synth: $(SYNTH_DCP)
 
@@ -97,34 +169,38 @@ program: --check_top
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/program.tcl) \
 		-tclargs out/$(TOP).bit
 
-sim: $(BUILT_ASM_FILES) --check_tb | $(BUILD_DIR)
+sim: $(ALL_MEM_FILES) --check_tb | $(BUILD_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl) \
-		-tclargs $(TB) $(FPGA_PART) "$(SRC_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(TEST_FILES_PATHS)"
+		-tclargs $(TB) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(TEST_FILES_PATHS)"
 
-sim_gui: $(BUILT_ASM_FILES) --check_tb | $(BUILD_DIR)
+sim_gui: $(ALL_MEM_FILES) --check_tb | $(BUILD_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl) \
-		-tclargs $(TB) $(FPGA_PART) "$(SRC_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" \
+		-tclargs $(TB) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" \
 			"$(TEST_FILES_PATHS)" "$(XSIM_WCFG_PATH)"
 
-rtl: $(BUILT_ASM_FILES) --check_top | $(BUILD_DIR)/out
+rtl: $(ALL_MEM_FILES) --check_top | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/rtl.tcl) \
-		-tclargs $(TOP) $(FPGA_PART) "$(SRC_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
+		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
 
 asm: $(BUILT_ASM_FILES)
 
-disasm: $(BUILT_DISASM_FILES)
+firmware: $(BUILT_FIRMWARE_FILES)
 
 clean:
 	rm -rf $(BUILD_DIR)
 
+
+# Vivado explicit flow targets (super slow)
+# ----------------------------
+
 # Implementation Stages
-$(SYNTH_DCP): --check_top $(SRC_FILES) $(MEM_FILES) $(BUILT_ASM_FILES) $(XDC_FILES) | $(BUILD_DIR)/out
+$(SYNTH_DCP): --check_top $(RTL_FILES) $(MEM_FILES) $(ALL_MEM_FILES) $(XDC_FILES) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/synth.tcl) \
-		-tclargs $(TOP) $(FPGA_PART) "$(SRC_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
+		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES)" "$(XDC_FILES_PATHS)"
 
 $(PLACE_DCP): $(SYNTH_DCP) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
@@ -134,29 +210,74 @@ $(ROUTE_DCP): $(PLACE_DCP) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/route.tcl)
 
-# This task will produce both normal mem images, and separated hardvard ones
-$(BUILD_DIR)/out/%.mem: $(SRC_DIR)/%.asm | $(BUILD_DIR)/out
-	mkdir -p $(dir $(BUILD_DIR)/asm/$*)
-	mkdir -p $(dir $(BUILD_DIR)/out/$*)
-	$(RV32_GCC_BIN)/riscv32-unknown-elf-as -march=rv32i -o $(BUILD_DIR)/asm/$*.o $<
-	$(RV32_GCC_BIN)/riscv32-unknown-elf-ld -T $(TCL_DIR)/rv32g_harvard.ld \
-		-o $(BUILD_DIR)/asm/$*.elf $(BUILD_DIR)/asm/$*.o
-	$(RV32_GCC_BIN)/riscv32-unknown-elf-objdump -D $(BUILD_DIR)/asm/$*.elf > $(BUILD_DIR)/out/$*.dis
-	readelf -l $(BUILD_DIR)/asm/$*.elf > $(BUILD_DIR)/out/$*.segments.txt
-	readelf -S $(BUILD_DIR)/asm/$*.elf > $(BUILD_DIR)/out/$*.sections.txt
-	readelf -s $(BUILD_DIR)/asm/$*.elf > $(BUILD_DIR)/out/$*.symbols.txt
-	$(RV32_GCC_BIN)/riscv32-unknown-elf-objcopy -O binary $(BUILD_DIR)/asm/$*.elf $(BUILD_DIR)/asm/$*.bin
-	$(RV32_GCC_BIN)/riscv32-unknown-elf-objcopy -O binary -j .text $(BUILD_DIR)/asm/$*.elf $(BUILD_DIR)/asm/$*.rom.bin
-	$(RV32_GCC_BIN)/riscv32-unknown-elf-objcopy -O binary -j .data -j .bss -j .rodata $(BUILD_DIR)/asm/$*.elf $(BUILD_DIR)/asm/$*.ram.bin
-	xxd -p -c 4 $(BUILD_DIR)/asm/$*.bin | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $(BUILD_DIR)/out/$*.mem
-	xxd -p -c 4 $(BUILD_DIR)/asm/$*.rom.bin | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $(BUILD_DIR)/out/$*.rom.mem
-	xxd -p -c 4 $(BUILD_DIR)/asm/$*.ram.bin | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $(BUILD_DIR)/out/$*.ram.mem
 
-$(BUILD_DIR)/disasm/%.disasm: $(SRC_DIR)/%.mem
-	mkdir -p $(dir $(BUILD_DIR)/disasm/$*)
-	awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' $< | xxd -r -p > $(BUILD_DIR)/disasm/$*.bin
-	$(RV32_GCC_BIN)/riscv32-unknown-elf-objdump -D -b binary -m riscv:rv32 $(BUILD_DIR)/disasm/$*.bin > $@
+# Memory firmware targets
+# -----------------------
 
-# Directory Creation
-$(BUILD_DIR) $(BUILD_DIR)/out:
+$(FIRMWARE_DIR)/%.elf: $(OBJ_FILES) | $(BUILD_DIR)
+	$(LD) -T $(TCL_DIR)/rv32g_harvard.ld -o $@ $(OBJ_FILES)
+	$(OBJDUMP) -D $@ > $(FIRMWARE_DIR)/$*.dis
+	$(READELF) -l $@ > $(FIRMWARE_DIR)/$*.segments.txt
+	$(READELF) -S $@ > $(FIRMWARE_DIR)/$*.sections.txt
+	$(READELF) -s $@ > $(FIRMWARE_DIR)/$*.symbols.txt
+
+# Object files to ELF
+$(BUILD_DIR)/%.elf: $(BUILD_DIR)/%.o | $(BUILD_DIR)
+	$(LD) -T $(TCL_DIR)/rv32g_harvard.ld -o $@ $<
+	$(OBJDUMP) -D $@ > $(BUILD_DIR)/$*.dis
+	$(READELF) -l $@ > $(BUILD_DIR)/$*.segments.txt
+	$(READELF) -S $@ > $(BUILD_DIR)/$*.sections.txt
+	$(READELF) -s $@ > $(BUILD_DIR)/$*.symbols.txt
+
+# ELF to binary files
+$(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf
+	$(OBJCOPY) -O binary $< $@
+
+$(BUILD_DIR)/%.rom.bin: $(BUILD_DIR)/%.elf
+	$(OBJCOPY) -O binary -j .text $< $@
+
+$(BUILD_DIR)/%.ram.bin: $(BUILD_DIR)/%.elf
+	$(OBJCOPY) -O binary -j .data -j .bss $< $@
+
+
+# Assembly targets
+# ----------------
+
+# Assembly to Object files
+$(ASM_DIR)/%.o: $(RTL_DIR)/%.asm | $(ASM_DIR)
+	@mkdir -p $(dir $@)
+	$(AS) -march=rv32i -o $@ $<
+
+# Binary to memory files with endian conversion
+$(OUT_DIR)/%.mem: $(ASM_DIR)/%.bin | $(OUT_DIR)
+	@mkdir -p $(dir $@)
+	xxd -p -c 4 $< | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $@
+
+
+# Firmware (C++) targets
+# ----------------------
+
+# Compile startup.S to startup.o
+$(FIRMWARE_DIR)/%.S.o: $(STARTUP_FILE) | $(FIRMWARE_DIR)
+	$(GCC) $(CFLAGS) -c -o $@ $<
+
+# Compile each C source file
+$(FIRMWARE_DIR)/%.c.o: $(SRC_DIR)/%.c | $(FIRMWARE_DIR)
+	$(GCC) $(CFLAGS) -I$(INC_DIR) -c -o $@ $<
+
+# Compile each C++ source file
+$(FIRMWARE_DIR)/%.cpp.o: $(SRC_DIR)/%.cpp | $(FIRMWARE_DIR)
+	$(GCC) $(CXXFLAGS) -I$(INC_DIR) -c -o $@ $<
+
+# Binary to memory files with endian conversion
+$(OUT_DIR)/%.mem: $(FIRMWARE_DIR)/%.bin | $(OUT_DIR)
+	@mkdir -p $(dir $@)
+	xxd -p -c 4 $< | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $@
+
+
+# Utilities
+# ---------
+
+# Directory creation rules
+$(FIRMWARE_DIR) $(ASM_DIR) $(OUT_DIR) $(BUILD_DIR):
 	mkdir -p $@

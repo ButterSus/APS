@@ -28,8 +28,8 @@ package peripheral_pkg;
   // localparam int TIMER_INT_IDX   = 8;
 
   localparam int SW_INT_IDX      = 2;
-  localparam int PS2_INT_IDX     = 1 /* STUB */;
-  localparam int UART_RX_INT_IDX = 0 /* STUB */;
+  localparam int PS2_INT_IDX     = 0 /* STUB */;
+  localparam int UART_RX_INT_IDX = 1 /* STUB */;
   localparam int TIMER_INT_IDX   = 3 /* STUB */;
 
   task automatic ps2_send_scan_code(input logic [7:0] code, ref logic ps2_clk, ref logic ps2_dat);
