@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 # -----------------------------------------------------------------------------
 # Project Name   : Architectures of Processor Systems (APS) lab work
 # Organization   : National Research University of Electronic Technology (MIET)

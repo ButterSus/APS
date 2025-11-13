@@ -8,7 +8,7 @@
 See https://github.com/MPSU/APS/blob/master/LICENSE file for licensing details.
 * ------------------------------------------------------------------------------
 */
-module lab_15_tb_system();
+module lab_15_tb_processor_system();
 
   logic          clk_i;
   logic          sysclk;
@@ -16,7 +16,7 @@ module lab_15_tb_system();
   logic          flash_rx;
   logic          tx_o;
   logic ps2_clk, ps2_dat;
-  logic sw_i;
+  logic [15:0] sw_i;
   logic tb_rx;
   logic flashing_is_done = 0;
   logic core_reset;
@@ -42,8 +42,8 @@ module lab_15_tb_system();
     rst_i <= 1;
     repeat(2) @(posedge sysclk);
     rst_i <= 0;
-    program_region("YOUR_INSTR_MEM_FILE.mem", sysclk, tx_valid, rx_valid, tx_o, tx_busy, core_reset, rx_data, tx_data);
-    program_region("YOUR_DATA_MEM_FILE.mem", sysclk, tx_valid, rx_valid, tx_o, tx_busy, core_reset, rx_data, tx_data);
+    program_region("main.rom.mem", sysclk, tx_valid, rx_valid, tx_o, tx_busy, core_reset, rx_data, tx_data);
+    program_region("main.ram.mem", sysclk, tx_valid, rx_valid, tx_o, tx_busy, core_reset, rx_data, tx_data);
     finish_programming(sysclk, tx_valid, tx_busy, core_reset, tx_data);
     repeat(200) @(posedge sysclk);
     flashing_is_done = 1;
@@ -101,7 +101,7 @@ module lab_15_tb_system();
   end
 
 
-  system DUT(
+  processor_system DUT(
     .clk_i    (clk_i  ),
     .resetn_i (!rst_i ),
     .rx_i     (flashing_is_done ? tb_rx : flash_rx ),
@@ -111,7 +111,7 @@ module lab_15_tb_system();
     .sw_i     (sw_i   )
   );
 
-  assign core_reset = DUT.core_inst.rst_i;
+  assign core_reset = DUT.core.rst_i;
 
   uart_rx rx(
   .clk_i      (sysclk     ),

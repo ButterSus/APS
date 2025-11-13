@@ -1,6 +1,6 @@
 # Directories
 RTL_DIR   := rtl
-TEST_DIR  := test
+TB_DIR    := test
 BOARD_DIR := board_files
 BUILD_DIR := build
 TCL_DIR   := ../../TclScripts

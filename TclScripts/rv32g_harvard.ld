@@ -11,8 +11,8 @@ ENTRY(_start)
 MEMORY  /* Segments = "Memory regions" */
 {
     /* Origin here is VMA, substituted to section binaries */
-    ROM (RX!W) : ORIGIN = 0x00000000, LENGTH = 1K
-    RAM (RW!X) : ORIGIN = 0x00000000, LENGTH = 2K
+    ROM (RX!W) : ORIGIN = 0x00000000, LENGTH = 4K
+    RAM (RW!X) : ORIGIN = 0x00000000, LENGTH = 4K
     /* LinkerScript uses lengths to assert if sections fit into segments */
 }
 
@@ -31,9 +31,11 @@ SECTIONS {
 
     /*
      * AT directive will put it in Flash memory region,
-     * while keeping addresses normal
+     * while keeping addresses normal.
+     * Address here is per-4-byte, while actual one uses per-byte,
+     * this is why we use ADDRESS / 4 (Final address is 0x00800000).
      */
-    .data : AT (0x00800000) {
+    .data : AT (0x00200000) {
         /* Put gbl_ptr in a middle of 4KB range */
         _gbl_ptr = . + 2048;
 

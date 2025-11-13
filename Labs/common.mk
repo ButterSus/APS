@@ -57,11 +57,11 @@ endef
 
 # Source Files
 RTL_FILES  := $(call rwildcard, $(RTL_DIR), *.sv) $(call rwildcard, $(RTL_DIR), *.v) $(call rwildcard, $(BOARD_DIR), *.sv) $(call rwildcard, $(BOARD_DIR), *.v)
-TEST_FILES := $(call rwildcard, $(TEST_DIR), *.sv) $(call rwildcard, $(TEST_DIR), *.v)
+TEST_FILES := $(call rwildcard, $(TB_DIR), *.sv) $(call rwildcard, $(TB_DIR), *.v)
 XDC_FILES  := $(call rwildcard, $(BOARD_DIR), *.xdc)
-MEM_FILES  := $(call rwildcard, $(RTL_DIR), *.mem)
-ASM_FILES  := $(call rwildcard, $(RTL_DIR), *.asm)
-STARTUP_FILE := $(SRC_DIR)/startup.S
+MEM_FILES  := $(call rwildcard, $(RTL_DIR), *.mem) $(call rwildcard, $(TB_DIR), *.mem)
+ASM_FILES  := $(call rwildcard, $(RTL_DIR), *.asm) $(call rwildcard, $(TB_DIR), *.asm)
+STARTUP_FILE ?= $(SRC_DIR)/startup.S
 C_FILES      := $(call rwildcard, $(SRC_DIR), *.c)
 CPP_FILES    := $(call rwildcard, $(SRC_DIR), *.cpp)
 INC_FILES    := $(call rwildcard, $(INC_DIR), *.h) $(call rwildcard, $(INC_DIR), *.hpp)
@@ -87,20 +87,21 @@ BUILT_ASM_FILES := $(patsubst $(RTL_DIR)/%.asm, $(OUT_DIR)/%.rom.mem, $(ASM_FILE
 ifeq ($(strip $(FIRMWARE_NAME)),)
   BUILT_FIRMWARE_FILES :=
 else
-  BUILT_FIRMWARE_FILES := $(OUT_DIR)/$(FIRMWARE_NAME).rom.mem $(OUT_DIR)/$(FIRMWARE_NAME).ram.mem
+  BUILT_FIRMWARE_ROM   := $(OUT_DIR)/$(FIRMWARE_NAME).rom.mem
+  BUILT_FIRMWARE_RAM   := $(OUT_DIR)/$(FIRMWARE_NAME).ram.mem
+  BUILT_FIRMWARE_FILES := $(BUILT_FIRMWARE_ROM)
+  BUILT_FIRMWARE_FILES := $(BUILT_FIRMWARE_RAM)
 endif
 ALL_MEM_FILES := $(MEM_FILES) $(BUILT_ASM_FILES) $(BUILT_FIRMWARE_FILES)
 OBJ_FILES := $(patsubst $(SRC_DIR)/%.S,$(FIRMWARE_DIR)/%.S.o,$(STARTUP_FILE)) \
              $(patsubst $(SRC_DIR)/%.c,$(FIRMWARE_DIR)/%.c.o,$(C_FILES)) \
 			 $(patsubst $(SRC_DIR)/%.cpp,$(FIRMWARE_DIR)/%.cpp.o,$(CPP_FILES))
-$(info $$OBJ_FILES is [$(OBJ_FILES)])
-
 
 # Paths relative to $(BUILD_DIR)
 RTL_FILES_PATHS     := $(call realpath_safe,$(RTL_FILES))
 TEST_FILES_PATHS    := $(call realpath_safe,$(TEST_FILES))
 XDC_FILES_PATHS     := $(call realpath_safe,$(XDC_FILES))
-XSIM_WCFG_PATH      := $(call realpath_safe,$(TEST_DIR)/xsim.wcfg)
+XSIM_WCFG_PATH      := $(call realpath_safe,$(TB_DIR)/xsim.wcfg)
 ALL_MEM_FILES_PATHS := $(call realpath_safe,$(MEM_FILES) $(BUILT_ASM_FILES) $(BUILT_FIRMWARE_FILES))
 
 # Tool prefixes
@@ -146,10 +147,13 @@ help:
 --check_tb:
 	@test -n "$(TB)" || (echo "Error: TB testbench required. Usage: make <target> TB=testbench_name"; exit 1)
 
-# Main Targets
-.PHONY: quick synth impl bitstream program sim sim_gui rtl asm disasm clean
+--check_com_port:
+	@test -n "$(COM_PORT)" || (echo "Error: COM port required. Usage: make <target> COM_PORT=testbench_name"; exit 1)
 
-quick: $(ALL_MEM_FILES) --check_top | $(BUILD_DIR)/out
+# Main Targets
+.PHONY: quick synth impl bitstream program flash sim sim_gui rtl asm firmware clean
+
+quick: --check_top $(ALL_MEM_FILES) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/quick.tcl) \
 		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
@@ -169,18 +173,21 @@ program: --check_top
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/program.tcl) \
 		-tclargs out/$(TOP).bit
 
-sim: $(ALL_MEM_FILES) --check_tb | $(BUILD_DIR)
+flash: --check_com_port $(BUILT_FIRMWARE_FILES)
+	python3 $(TCL_DIR)/flash.py -d $(BUILT_FIRMWARE_RAM) $(BUILT_FIRMWARE_ROM) $(COM_PORT)
+
+sim: --check_tb $(ALL_MEM_FILES) | $(BUILD_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl) \
 		-tclargs $(TB) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(TEST_FILES_PATHS)"
 
-sim_gui: $(ALL_MEM_FILES) --check_tb | $(BUILD_DIR)
+sim_gui: --check_tb $(ALL_MEM_FILES) | $(BUILD_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl) \
 		-tclargs $(TB) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" \
 			"$(TEST_FILES_PATHS)" "$(XSIM_WCFG_PATH)"
 
-rtl: $(ALL_MEM_FILES) --check_top | $(BUILD_DIR)/out
+rtl: --check_top $(ALL_MEM_FILES) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/rtl.tcl) \
 		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
@@ -269,10 +276,14 @@ $(FIRMWARE_DIR)/%.c.o: $(SRC_DIR)/%.c | $(FIRMWARE_DIR)
 $(FIRMWARE_DIR)/%.cpp.o: $(SRC_DIR)/%.cpp | $(FIRMWARE_DIR)
 	$(GCC) $(CXXFLAGS) -I$(INC_DIR) -c -o $@ $<
 
-# Binary to memory files with endian conversion
-$(OUT_DIR)/%.mem: $(FIRMWARE_DIR)/%.bin | $(OUT_DIR)
+# ELF to memory files
+$(OUT_DIR)/%.rom.mem: $(FIRMWARE_DIR)/%.elf | $(OUT_DIR)
 	@mkdir -p $(dir $@)
-	xxd -p -c 4 $< | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $@
+	$(OBJCOPY) -O verilog -j .text $< $@
+
+$(OUT_DIR)/%.ram.mem: $(FIRMWARE_DIR)/%.elf | $(OUT_DIR)
+	@mkdir -p $(dir $@)
+	$(OBJCOPY) -O verilog -j .data -j .bss $< $@
 
 
 # Utilities
