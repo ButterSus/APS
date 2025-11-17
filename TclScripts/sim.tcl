@@ -37,22 +37,24 @@ set_property -name {xsim.simulate.runtime} -value {1s} -objects [get_filesets si
 # Log everything by default
 log_wave -recursive /*
 
+if {$wave_cfg_path ne ""} {
+	# If wave config provided, we interpret this as command to run waveforms
+	if {[file exists $wave_cfg_path]} {
+		puts "Loading wave config..."
+		open_wave_config $wave_cfg_path
+	}
+
+	proc save_wcfg {} {
+		global wave_cfg_path
+		save_wave_config $wave_cfg_path
+		puts "Saved wave config."
+	}
+
+	puts "Please feel free to use 'save_wcfg' function to save your wave configuration"
+}
+
 run all
 
 if {$wave_cfg_path eq ""} {
     close_sim -force
-} else {
-    # If wave config provided, we interpret this as command to run waveforms
-	if {[file exists $wave_cfg_path]} {
-	    puts "Loading wave config..."
-	    open_wave_config $wave_cfg_path
-    }
-
-	proc save_wcfg {} {
-	    global wave_cfg_path
-	    save_wave_config $wave_cfg_path
-	    puts "Saved wave config."
-	}
-
-	puts "Please feel free to use 'save_wcfg' function to save your wave configuration"
 }

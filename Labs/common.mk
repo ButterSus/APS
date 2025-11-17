@@ -27,9 +27,11 @@
 
 VIVADO_BIN := /tools/Xilinx/Vivado/2019.2/bin
 ifeq ($(strip $(MACHINE)),1)
-RV32_GCC_BIN = /home/buttersus/Dev/riscv/bin
+RV32_GCC_BIN := /home/buttersus/Dev/riscv/bin
+RV32_GCC_PREFIX := riscv32-unknown-elf
 else
-RV32_GCC_BIN = /tools/riscv-dv/riscv-gnu-toolchain/build/riscv32/bin
+RV32_GCC_BIN := /tools/riscv-dv/riscv-gnu-toolchain/build/riscv32/bin
+RV32_GCC_PREFIX := riscv32-unknown-elf
 endif
 
 # FPGA Configuration
@@ -105,13 +107,13 @@ XSIM_WCFG_PATH      := $(call realpath_safe,$(TB_DIR)/xsim.wcfg)
 ALL_MEM_FILES_PATHS := $(call realpath_safe,$(MEM_FILES) $(BUILT_ASM_FILES) $(BUILT_FIRMWARE_FILES))
 
 # Tool prefixes
-AS      = $(RV32_GCC_BIN)/riscv32-unknown-elf-as
-GCC     = $(RV32_GCC_BIN)/riscv32-unknown-elf-gcc
-G++     = $(RV32_GCC_BIN)/riscv32-unknown-elf-g++
-LD      = $(RV32_GCC_BIN)/riscv32-unknown-elf-ld
-OBJDUMP = $(RV32_GCC_BIN)/riscv32-unknown-elf-objdump
-OBJCOPY = $(RV32_GCC_BIN)/riscv32-unknown-elf-objcopy
-READELF = readelf
+AS      = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-as
+GCC     = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-gcc
+G++     = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-g++
+LD      = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-ld
+OBJDUMP = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-objdump
+OBJCOPY = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-objcopy
+READELF = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-readelf
 
 
 # PHONY TARGETS (Always rebuild)
@@ -207,7 +209,7 @@ clean:
 $(SYNTH_DCP): --check_top $(RTL_FILES) $(MEM_FILES) $(ALL_MEM_FILES) $(XDC_FILES) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/synth.tcl) \
-		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES)" "$(XDC_FILES_PATHS)"
+		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
 
 $(PLACE_DCP): $(SYNTH_DCP) | $(BUILD_DIR)/out
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \

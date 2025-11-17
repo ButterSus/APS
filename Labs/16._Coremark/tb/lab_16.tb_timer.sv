@@ -18,7 +18,7 @@ module lab_16_tb_timer();
   logic [31:0] write_data_i;
   logic [31:0] read_data_o;
   logic        ready_o;
-  logic        interrupt_request_o;
+  logic        irq_req_o;
 
 localparam SYS_CNT_ADDR = 32'h0000_0000;
 localparam DELAY_ADDR   = 32'h0000_0008;
@@ -62,7 +62,7 @@ end
 
 one_cycle_irq: assert property (
   @(posedge clk_i) disable iff ( rst_i || (DUT.delay==32'd1))
-  (interrupt_request_o |=> !interrupt_request_o)
+  (irq_req_o |=> !irq_req_o)
 );
 
 task test_ntimes(input logic [31:0] delay, ntimes);
@@ -71,7 +71,7 @@ task test_ntimes(input logic [31:0] delay, ntimes);
   write_req(MODE_ADDR, NTIMES);
   repeat(ntimes) begin
     repeat(delay)@(posedge clk_i);
-    if(!interrupt_request_o & delay) begin
+    if(!irq_req_o & delay) begin
       $error("test_ntimes: delay = %d, ntimes = %d", delay, ntimes);
     end
   end
@@ -82,7 +82,7 @@ task test_forever(input logic [31:0] delay);
   write_req(MODE_ADDR, FOREVER);
   repeat(1000) begin
     repeat(delay) @(posedge clk_i);
-    if(!interrupt_request_o) begin
+    if(!irq_req_o) begin
       $error("test_forever");
     end
   end

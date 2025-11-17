@@ -38,7 +38,7 @@ module lab_16_tb_coremark();
     repeat(2) @(posedge clk_i);
     rst_i <= 0;
 
-    dummy_programming();
+    // dummy_programming();
 
     coremark_cntr = 0;
     coremark_msg = {32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32};
@@ -60,9 +60,9 @@ module lab_16_tb_coremark();
 
   initial #500ms $finish();
   processor_system DUT(
-    .clk_i      (clk100mhz_i), 
-    .resetn_i   (aresetn_i), 
-    .rx_i       (rx_i), 
+    .clk_i      (clk100mhz_i),
+    .resetn_i   (aresetn_i),
+    .rx_i       (rx_i),
     .tx_o       (tx_o)
 );
 
