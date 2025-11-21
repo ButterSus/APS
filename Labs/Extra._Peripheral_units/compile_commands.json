@@ -1,0 +1,31 @@
+[
+  {
+    "arguments": [
+      "/home/buttersus/Dev/riscv/bin/riscv32-unknown-elf-gcc",
+      "-march=rv32i_zicsr",
+      "-mabi=ilp32",
+      "-c",
+      "-o",
+      "build/firmware/startup.S.o",
+      "src/startup.S"
+    ],
+    "directory": "/home/buttersus/remote-rtl/APS/Labs/Extra._Peripheral_units",
+    "file": "/home/buttersus/remote-rtl/APS/Labs/Extra._Peripheral_units/src/startup.S",
+    "output": "/home/buttersus/remote-rtl/APS/Labs/Extra._Peripheral_units/build/firmware/startup.S.o"
+  },
+  {
+    "arguments": [
+      "/home/buttersus/Dev/riscv/bin/riscv32-unknown-elf-gcc",
+      "-march=rv32i_zicsr",
+      "-mabi=ilp32",
+      "-Iinclude",
+      "-c",
+      "-o",
+      "build/firmware/main.c.o",
+      "src/main.c"
+    ],
+    "directory": "/home/buttersus/remote-rtl/APS/Labs/Extra._Peripheral_units",
+    "file": "/home/buttersus/remote-rtl/APS/Labs/Extra._Peripheral_units/src/main.c",
+    "output": "/home/buttersus/remote-rtl/APS/Labs/Extra._Peripheral_units/build/firmware/main.c.o"
+  }
+]

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="tb_ps2_sb_ctrl_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="glbl" />
+            <top_module name="tb_ps2_sb_ctrl" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="81245833fs"></ZoomStartTime>
+      <ZoomEndTime time="85090834fs"></ZoomEndTime>
+      <Cursor1Time time="84450000fs"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="164"></NameColumnWidth>
+      <ValueColumnWidth column_width="66"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="24" />
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/rst_i">
+      <obj_property name="ElementShortName">rst_i</obj_property>
+      <obj_property name="ObjectShortName">rst_i</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/clk_i">
+      <obj_property name="ElementShortName">clk_i</obj_property>
+      <obj_property name="ObjectShortName">clk_i</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_ps2_sb_ctrl/dut/keycode">
+      <obj_property name="ElementShortName">keycode[7:0]</obj_property>
+      <obj_property name="ObjectShortName">keycode[7:0]</obj_property>
+      <obj_property name="Radix">ASCIIRADIX</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_ps2_sb_ctrl/dut/counter">
+      <obj_property name="ElementShortName">counter[31:0]</obj_property>
+      <obj_property name="ObjectShortName">counter[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/driver_valid">
+      <obj_property name="ElementShortName">driver_valid</obj_property>
+      <obj_property name="ObjectShortName">driver_valid</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/release_state">
+      <obj_property name="ElementShortName">release_state</obj_property>
+      <obj_property name="ObjectShortName">release_state</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/release_state_r">
+      <obj_property name="ElementShortName">release_state_r</obj_property>
+      <obj_property name="ObjectShortName">release_state_r</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/key_press">
+      <obj_property name="ElementShortName">key_press</obj_property>
+      <obj_property name="ObjectShortName">key_press</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/key_release">
+      <obj_property name="ElementShortName">key_release</obj_property>
+      <obj_property name="ObjectShortName">key_release</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_ps2_sb_ctrl/dut/i_amem/cam">
+      <obj_property name="ElementShortName">cam[0:9][7:0]</obj_property>
+      <obj_property name="ObjectShortName">cam[0:9][7:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_ps2_sb_ctrl/dut/i_amem/vld">
+      <obj_property name="ElementShortName">vld[9:0]</obj_property>
+      <obj_property name="ObjectShortName">vld[9:0]</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/i_amem/tag_hit">
+      <obj_property name="ElementShortName">tag_hit</obj_property>
+      <obj_property name="ObjectShortName">tag_hit</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_ps2_sb_ctrl/dut/i_amem/addr_i">
+      <obj_property name="ElementShortName">addr_i[3:0]</obj_property>
+      <obj_property name="ObjectShortName">addr_i[3:0]</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/irq_req_o">
+      <obj_property name="ElementShortName">irq_req_o</obj_property>
+      <obj_property name="ObjectShortName">irq_req_o</obj_property>
+      <obj_property name="CustomSignalColor">#00FFFF</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_ps2_sb_ctrl/dut/keycode_out">
+      <obj_property name="ElementShortName">keycode_out[7:0]</obj_property>
+      <obj_property name="ObjectShortName">keycode_out[7:0]</obj_property>
+      <obj_property name="CustomSignalColor">#00FFFF</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+      <obj_property name="Radix">ASCIIRADIX</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/irq_ret_i">
+      <obj_property name="ElementShortName">irq_ret_i</obj_property>
+      <obj_property name="ObjectShortName">irq_ret_i</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/addr_vld_r">
+      <obj_property name="ElementShortName">addr_vld_r</obj_property>
+      <obj_property name="ObjectShortName">addr_vld_r</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/addr_vld">
+      <obj_property name="ElementShortName">addr_vld</obj_property>
+      <obj_property name="ObjectShortName">addr_vld</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_ps2_sb_ctrl/dut/amem_keycode_o">
+      <obj_property name="ElementShortName">amem_keycode_o[7:0]</obj_property>
+      <obj_property name="ObjectShortName">amem_keycode_o[7:0]</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/addr_hit">
+      <obj_property name="ElementShortName">addr_hit</obj_property>
+      <obj_property name="ObjectShortName">addr_hit</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/valid_out">
+      <obj_property name="ElementShortName">valid_out</obj_property>
+      <obj_property name="ObjectShortName">valid_out</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/valid_next">
+      <obj_property name="ElementShortName">valid_next</obj_property>
+      <obj_property name="ObjectShortName">valid_next</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/i_amem/push_i">
+      <obj_property name="ElementShortName">push_i</obj_property>
+      <obj_property name="ObjectShortName">push_i</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_ps2_sb_ctrl/dut/i_amem/pop_i">
+      <obj_property name="ElementShortName">pop_i</obj_property>
+      <obj_property name="ObjectShortName">pop_i</obj_property>
+   </wvobject>
+</wave_config>

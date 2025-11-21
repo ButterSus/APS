@@ -91,8 +91,8 @@ ifeq ($(strip $(FIRMWARE_NAME)),)
 else
   BUILT_FIRMWARE_ROM   := $(OUT_DIR)/$(FIRMWARE_NAME).rom.mem
   BUILT_FIRMWARE_RAM   := $(OUT_DIR)/$(FIRMWARE_NAME).ram.mem
-  BUILT_FIRMWARE_FILES := $(BUILT_FIRMWARE_ROM)
-  BUILT_FIRMWARE_FILES := $(BUILT_FIRMWARE_RAM)
+  BUILT_FIRMWARE_FILES := $(BUILT_FIRMWARE_ROM) \
+                          $(BUILT_FIRMWARE_RAM)
 endif
 ALL_MEM_FILES := $(MEM_FILES) $(BUILT_ASM_FILES) $(BUILT_FIRMWARE_FILES)
 OBJ_FILES := $(patsubst $(SRC_DIR)/%.S,$(FIRMWARE_DIR)/%.S.o,$(STARTUP_FILE)) \
@@ -175,7 +175,8 @@ program: --check_top
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/program.tcl) \
 		-tclargs out/$(TOP).bit
 
-flash: --check_com_port $(BUILT_FIRMWARE_FILES)
+# flash: --check_com_port $(BUILT_FIRMWARE_FILES)
+flash: --check_com_port
 	python3 $(TCL_DIR)/flash.py -d $(BUILT_FIRMWARE_RAM) $(BUILT_FIRMWARE_ROM) $(COM_PORT)
 
 sim: --check_tb $(ALL_MEM_FILES) | $(BUILD_DIR)

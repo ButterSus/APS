@@ -53,6 +53,14 @@ if {$wave_cfg_path ne ""} {
 	puts "Please feel free to use 'save_wcfg' function to save your wave configuration"
 }
 
+proc rerun {} {
+	relaunch_sim
+	log_wave -recursive /*
+	run all
+}
+
+puts "Use 'rerun' to relaunch the simulation"
+
 run all
 
 if {$wave_cfg_path eq ""} {
