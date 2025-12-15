@@ -82,6 +82,7 @@ endef
 ASM_DIR = $(BUILD_DIR)/asm
 OUT_DIR = $(BUILD_DIR)/out
 FIRMWARE_DIR = $(BUILD_DIR)/firmware
+SCRIPTS_DIR ?= $(TCL_DIR)
 
 # Built Files
 BUILT_ASM_FILES := $(patsubst $(RTL_DIR)/%.asm, $(OUT_DIR)/%.rom.mem, $(ASM_FILES)) \
@@ -121,24 +122,10 @@ READELF = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-readelf
 
 # Most of these just invoke TCL scripts.
 
-# Help function
+# Help function - self-documenting
 .PHONY: help
-help:
-	@echo "Vivado Build System"
-	@echo "Usage: make [target] TOP=module_name [options]"
-	@echo "       make [target] TB=testbench_name [options]"
-	@echo ""
-	@echo "Targets:"
-	@echo "  quick      - Quick synthesis and implementation"
-	@echo "  synth      - Run synthesis only"
-	@echo "  impl       - Run implementation"
-	@echo "  bitstream  - Generate bitstream"
-	@echo "  program    - Program FPGA"
-	@echo "  sim        - Run simulation (batch)"
-	@echo "  sim_gui    - Run simulation (GUI)"
-	@echo "  rtl        - Open RTL viewer"
-	@echo "  asm        - Build assembly files"
-	@echo "  clean      - Remove build directory"
+help: ## Show this help screen
+	@awk 'BEGIN {FS = ":.*?##"; printf "\n\033[1mVivado Build System\033[0m\nUsage: make \033[36m<target>\033[0m [TOP=module_name] [TB=testbench_name] [options]\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } END{printf "\n"}' $(MAKEFILE_LIST)
 
 # Check required variables
 .PHONY: --check_top --check_tb
@@ -155,51 +142,50 @@ help:
 # Main Targets
 .PHONY: quick synth impl bitstream program flash sim sim_gui rtl asm firmware clean
 
-quick: --check_top $(ALL_MEM_FILES) | $(BUILD_DIR)/out
+quick: --check_top $(ALL_MEM_FILES) | $(BUILD_DIR)/out ## Quick synthesis + implementation
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/quick.tcl) \
 		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
 
-synth: $(SYNTH_DCP)
+synth: $(SYNTH_DCP) ## Run synthesis only
 
-impl: $(ROUTE_DCP)
+impl: $(ROUTE_DCP) ## Run full implementation
 
-bitstream: --check_top $(ROUTE_DCP) | $(BUILD_DIR)/out
+bitstream: --check_top $(ROUTE_DCP) | $(BUILD_DIR)/out ## Generate bitstream
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/bitstream.tcl) \
 		-tclargs $(TOP)
 
-program: --check_top
+program: --check_top ## Program FPGA (needs bitstream first)
 	@test -f $(BUILD_DIR)/out/$(TOP).bit || (echo "Error: Bitstream not found. Run 'make bitstream TOP=$(TOP)' first"; exit 1)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/program.tcl) \
 		-tclargs out/$(TOP).bit
 
-# flash: --check_com_port $(BUILT_FIRMWARE_FILES)
-flash: --check_com_port
-	python3 $(TCL_DIR)/flash.py -d $(BUILT_FIRMWARE_RAM) $(BUILT_FIRMWARE_ROM) $(COM_PORT)
+flash: --check_com_port ## Flash firmware over COM port
+	python3 $(SCRIPTS_DIR)/flash.py -d $(BUILT_FIRMWARE_RAM) $(BUILT_FIRMWARE_ROM) $(COM_PORT)
 
-sim: --check_tb $(ALL_MEM_FILES) | $(BUILD_DIR)
+sim: --check_tb $(ALL_MEM_FILES) | $(BUILD_DIR) ## Run batch simulation
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl) \
 		-tclargs $(TB) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(TEST_FILES_PATHS)"
 
-sim_gui: --check_tb $(ALL_MEM_FILES) | $(BUILD_DIR)
+sim_gui: --check_tb $(ALL_MEM_FILES) | $(BUILD_DIR) ## Run GUI simulation
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl) \
 		-tclargs $(TB) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" \
 			"$(TEST_FILES_PATHS)" "$(XSIM_WCFG_PATH)"
 
-rtl: --check_top $(ALL_MEM_FILES) | $(BUILD_DIR)/out
+rtl: --check_top $(ALL_MEM_FILES) | $(BUILD_DIR)/out ## Open RTL viewer
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
 		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/rtl.tcl) \
 		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
 
-asm: $(BUILT_ASM_FILES)
+asm: $(BUILT_ASM_FILES) ## Build assembly files to .mem
 
-firmware: $(BUILT_FIRMWARE_FILES)
+firmware: $(BUILT_FIRMWARE_FILES) ## Build C/C++ firmware
 
-clean:
+clean: ## Remove build directory
 	rm -rf $(BUILD_DIR)
 
 
