@@ -20,92 +20,115 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
 # Vivado Build System
 # Usage: make [target] TOP=module_name [options]
 #        make [target] TB=module_name [options]
 
+
+# --------------
+# Configure this
+
 VIVADO_BIN := /tools/Xilinx/Vivado/2019.2/bin
-ifeq ($(strip $(MACHINE)),1)
 RV32_GCC_BIN := /home/buttersus/Dev/riscv/bin
 RV32_GCC_PREFIX := riscv32-unknown-elf
-else
-RV32_GCC_BIN := /tools/riscv-dv/riscv-gnu-toolchain/build/riscv32/bin
-RV32_GCC_PREFIX := riscv32-unknown-elf
-endif
-
-# FPGA Configuration
-FPGA_PART := xc7a100tcsg324-1
-ifeq ($(strip $(MACHINE)),1)
 CFLAGS  := -march=rv32i_zicsr -mabi=ilp32 -Wl,--gc-sections -nostartfiles
 CXXFLAGS  := -march=rv32i_zicsr -mabi=ilp32 -Wl,--gc-sections -nostartfiles
-else
-CFLAGS  := -march=rv32i -mabi=ilp32 -Wl,--gc-sections -nostartfiles
-CXXFLAGS  := -march=rv32i -mabi=ilp32 -Wl,--gc-sections -nostartfiles
-endif
 
-# Build Targets
-SYNTH_DCP := $(BUILD_DIR)/out/synth.dcp
-PLACE_DCP := $(BUILD_DIR)/out/place.dcp
-ROUTE_DCP := $(BUILD_DIR)/out/route.dcp
+# FPGA Configuration (Nexys A7)
+FPGA_PART := xc7a100tcsg324-1
+
+# Few requirements:
+# 0. MEM_OUT_DIR can be anywhere
+# 1. Script uses absolute directories, so any spaces in absolute path will ruin it
+# 2. STARTUP_FILE must be in SRC_DIRS
+# 3. ASM_OUT_DIR, FIRMWARE_OUT_DIR should be in BUILD_DIR
+
+
+# ----------------------------------------------------------
+# For compatibility with older projects (remove if not used)
+
+ifdef LEGACY
+  # Flexible source directories (space-separated for multiples)
+  RTL_DIRS      ?= $(RTL_DIR) $(BOARD_DIR)
+  TB_DIRS       ?= $(TB_DIR)
+  BOARD_DIRS    ?= $(BOARD_DIR)
+  MEM_DIRS      ?= $(RTL_DIR) $(TB_DIR)
+  ASM_DIRS      ?= $(RTL_DIR) $(TB_DIR)
+  SRC_DIRS      ?= $(SRC_DIR)
+  INC_DIRS      ?= $(INC_DIR)
+  SCRIPTS_DIR   ?= $(TCL_DIR)
+
+  XSIM_WCFG     ?= $(TB_DIR)/xsim.wcfg
+  STARTUP_FILE  ?= $(SRC_DIR)/startup.S
+
+  # Output subdirectories
+  OUT_DIR          ?= $(BUILD_DIR)/out
+  MEM_OUT_DIR      ?= $(OUT_DIR)/mem
+  ASM_OUT_DIR      ?= $(OUT_DIR)/asm
+  FIRMWARE_OUT_DIR ?= $(FIRMWARE_DIR)
+else
+ifdef RTL_DIR
+  $(error Perhaps, you forgot to set LEGACY := 1 ..?)
+endif
+endif
 
 # Utilities
 define rwildcard
-  $(if $(strip $1), \
-    $(foreach d,$(wildcard $(1)/*),$(call rwildcard,$d,$2)) \
-    $(filter $(subst *,%,$2),$(wildcard $(1)/$(2))) \
-  )
+$(if $(strip $1), \
+  $(foreach d,$(wildcard $(1)/*),$(call rwildcard,$d,$2)) \
+  $(filter $(subst *,%,$2),$(wildcard $(1)/$(2))) \
+)
 endef
 
-# Source Files
-RTL_FILES  := $(call rwildcard, $(RTL_DIR), *.sv) $(call rwildcard, $(RTL_DIR), *.v) $(call rwildcard, $(BOARD_DIR), *.sv) $(call rwildcard, $(BOARD_DIR), *.v)
-TEST_FILES := $(call rwildcard, $(TB_DIR), *.sv) $(call rwildcard, $(TB_DIR), *.v)
-XDC_FILES  := $(call rwildcard, $(BOARD_DIR), *.xdc)
-MEM_FILES  := $(call rwildcard, $(RTL_DIR), *.mem) $(call rwildcard, $(TB_DIR), *.mem)
-ASM_FILES  := $(call rwildcard, $(RTL_DIR), *.asm) $(call rwildcard, $(TB_DIR), *.asm)
-STARTUP_FILE ?= $(SRC_DIR)/startup.S
-C_FILES      := $(call rwildcard, $(SRC_DIR), *.c)
-CPP_FILES    := $(call rwildcard, $(SRC_DIR), *.cpp)
-INC_FILES    := $(call rwildcard, $(INC_DIR), *.h) $(call rwildcard, $(INC_DIR), *.hpp)
-
-define realpath_safe
+define relpath
 $(strip $(shell \
-  trimmed=$$(echo $1 | xargs); \
-  if [ -z "$$trimmed" ]; then \
+  if [ -z "$(strip $1)" ]; then \
     printf ''; \
   else \
-    realpath -m --relative-to=$(BUILD_DIR) $1; \
+    realpath -m --relative-to=$2 $1; \
   fi))
 endef
 
-# Intermediate and output dirs
-ASM_DIR = $(BUILD_DIR)/asm
-OUT_DIR = $(BUILD_DIR)/out
-FIRMWARE_DIR = $(BUILD_DIR)/firmware
-SCRIPTS_DIR ?= $(TCL_DIR)
+define src_to_obj
+$(strip \
+  $(foreach f,$1, \
+    $(foreach d,$2, \
+      $(if $(filter $(d)/%,$(f)), \
+        $(addprefix $3/,$(patsubst $4,$5,$(patsubst $(d)/%,%,$(f)))) \
+      ) \
+    ) \
+  ) \
+)
+endef
 
-# Built Files
-BUILT_ASM_FILES := $(patsubst $(RTL_DIR)/%.asm, $(OUT_DIR)/%.rom.mem, $(ASM_FILES)) \
-				   $(patsubst $(RTL_DIR)/%.asm, $(OUT_DIR)/%.ram.mem, $(ASM_FILES))
-ifeq ($(strip $(FIRMWARE_NAME)),)
-  BUILT_FIRMWARE_FILES :=
-else
-  BUILT_FIRMWARE_ROM   := $(OUT_DIR)/$(FIRMWARE_NAME).rom.mem
-  BUILT_FIRMWARE_RAM   := $(OUT_DIR)/$(FIRMWARE_NAME).ram.mem
-  BUILT_FIRMWARE_FILES := $(BUILT_FIRMWARE_ROM) \
-                          $(BUILT_FIRMWARE_RAM)
-endif
-ALL_MEM_FILES := $(MEM_FILES) $(BUILT_ASM_FILES) $(BUILT_FIRMWARE_FILES)
-OBJ_FILES := $(patsubst $(SRC_DIR)/%.S,$(FIRMWARE_DIR)/%.S.o,$(STARTUP_FILE)) \
-             $(patsubst $(SRC_DIR)/%.c,$(FIRMWARE_DIR)/%.c.o,$(C_FILES)) \
-			 $(patsubst $(SRC_DIR)/%.cpp,$(FIRMWARE_DIR)/%.cpp.o,$(CPP_FILES))
+# Source Files - supports multiple directories
+RTL_FILES := $(foreach dir,$(RTL_DIRS),$(call rwildcard,$(dir),*.sv *.v))
+TB_FILES  := $(foreach dir,$(TB_DIRS),$(call rwildcard,$(dir),*.sv *.v))
+XDC_FILES := $(foreach dir,$(BOARD_DIRS),$(call rwildcard,$(dir),*.xdc))
+MEM_FILES := $(foreach dir,$(MEM_DIRS),$(call rwildcard,$(dir),*.mem))
+ASM_FILES := $(foreach dir,$(ASM_DIRS),$(call rwildcard,$(dir),*.asm))
+C_FILES   := $(foreach dir,$(SRC_DIRS),$(call rwildcard,$(dir),*.c))
+CPP_FILES := $(foreach dir,$(SRC_DIRS),$(call rwildcard,$(dir),*.cpp))
+INC_FILES := $(foreach dir,$(INC_DIRS),$(call rwildcard,$(dir),*.h *.hpp))
 
-# Paths relative to $(BUILD_DIR)
-RTL_FILES_PATHS     := $(call realpath_safe,$(RTL_FILES))
-TEST_FILES_PATHS    := $(call realpath_safe,$(TEST_FILES))
-XDC_FILES_PATHS     := $(call realpath_safe,$(XDC_FILES))
-XSIM_WCFG_PATH      := $(call realpath_safe,$(TB_DIR)/xsim.wcfg)
-ALL_MEM_FILES_PATHS := $(call realpath_safe,$(MEM_FILES) $(BUILT_ASM_FILES) $(BUILT_FIRMWARE_FILES))
+INC_FLAGS := $(foreach d,$(INC_DIRS),-I$(d))
+
+# Build Targets
+SYNTH_DCP := $(OUT_DIR)/synth.dcp
+PLACE_DCP := $(OUT_DIR)/place.dcp
+ROUTE_DCP := $(OUT_DIR)/route.dcp
+
+# Built Files - organized by type
+BUILT_ASM_ROMS       := $(call src_to_obj,$(ASM_FILES),$(ASM_DIRS),$(MEM_OUT_DIR),%.asm,%.rom.mem)
+BUILT_ASM_RAMS       := $(call src_to_obj,$(ASM_FILES),$(ASM_DIRS),$(MEM_OUT_DIR),%.asm,%.ram.mem)
+BUILT_ASM_FILES      := $(BUILT_ASM_ROMS) $(BUILT_ASM_RAMS)
+BUILT_FIRMWARE_ROM   := $(MEM_OUT_DIR)/$(FIRMWARE_NAME).rom.mem
+BUILT_FIRMWARE_RAM   := $(MEM_OUT_DIR)/$(FIRMWARE_NAME).ram.mem
+BUILT_FIRMWARE_FILES := $(if $(FIRMWARE_NAME),$(BUILT_FIRMWARE_ROM) $(BUILT_FIRMWARE_RAM),)
+ALL_MEM_FILES        := $(MEM_FILES) $(BUILT_ASM_FILES) $(BUILT_FIRMWARE_FILES)
+OBJ_FILES := $(call src_to_obj,$(STARTUP_FILE),$(SRC_DIRS),$(FIRMWARE_OUT_DIR),%.S,%.S.o) \
+             $(call src_to_obj,$(C_FILES),$(SRC_DIRS),$(FIRMWARE_OUT_DIR),%.c,%.c.o) \
+             $(call src_to_obj,$(CPP_FILES),$(SRC_DIRS),$(FIRMWARE_OUT_DIR),%.cpp,%.cpp.o)
 
 # Tool prefixes
 AS      = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-as
@@ -117,18 +140,10 @@ OBJCOPY = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-objcopy
 READELF = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-readelf
 
 
-# PHONY TARGETS (Always rebuild)
-# -------------
+# --------------
+# Helper targets
 
-# Most of these just invoke TCL scripts.
-
-# Help function - self-documenting
-.PHONY: help
-help: ## Show this help screen
-	@awk 'BEGIN {FS = ":.*?##"; printf "\n\033[1mVivado Build System\033[0m\nUsage: make \033[36m<target>\033[0m [TOP=module_name] [TB=testbench_name] [options]\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } END{printf "\n"}' $(MAKEFILE_LIST)
-
-# Check required variables
-.PHONY: --check_top --check_tb
+.PHONY: --check_top --check_tb --check_com_port
 
 --check_top:
 	@test -n "$(TOP)" || (echo "Error: TOP module required. Usage: make <target> TOP=module_name"; exit 1)
@@ -137,29 +152,37 @@ help: ## Show this help screen
 	@test -n "$(TB)" || (echo "Error: TB testbench required. Usage: make <target> TB=testbench_name"; exit 1)
 
 --check_com_port:
-	@test -n "$(COM_PORT)" || (echo "Error: COM port required. Usage: make <target> COM_PORT=testbench_name"; exit 1)
+	@test -n "$(COM_PORT)" || (echo "Error: COM port required. Usage: make <target> COM_PORT=com_port_name"; exit 1)
 
-# Main Targets
-.PHONY: quick synth impl bitstream program flash sim sim_gui rtl asm firmware clean
 
-quick: --check_top $(ALL_MEM_FILES) | $(BUILD_DIR)/out ## Quick synthesis + implementation
+# ------------
+# Main targets
+
+.PHONY: help quick synth impl bitstream program flash sim sim_gui rtl asm firmware clean
+
+help: ## Show this help screen
+	@awk 'BEGIN {FS = ":.*?##"; printf "\n\033[1mVivado Build System\033[0m\nUsage: make \033[36m<target>\033[0m [TOP=module_name] [TB=testbench_name] [options]\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } END{printf "\n"}' $(MAKEFILE_LIST)
+
+quick: --check_top $(ALL_MEM_FILES) | $(OUT_DIR) ## Quick synthesis + implementation
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/quick.tcl) \
-		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
+		-source $(call relpath,$(TCL_DIR)/quick.tcl,$(BUILD_DIR)) \
+		-tclargs $(TOP) $(FPGA_PART) \
+			"$(call relpath,$(RTL_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(ALL_MEM_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(XDC_FILES),$(BUILD_DIR))"
 
 synth: $(SYNTH_DCP) ## Run synthesis only
-
 impl: $(ROUTE_DCP) ## Run full implementation
 
-bitstream: --check_top $(ROUTE_DCP) | $(BUILD_DIR)/out ## Generate bitstream
+bitstream: --check_top $(ROUTE_DCP) | $(OUT_DIR) ## Generate bitstream
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/bitstream.tcl) \
+		-source $(call relpath,$(TCL_DIR)/bitstream.tcl,$(BUILD_DIR)) \
 		-tclargs $(TOP)
 
 program: --check_top ## Program FPGA (needs bitstream first)
 	@test -f $(BUILD_DIR)/out/$(TOP).bit || (echo "Error: Bitstream not found. Run 'make bitstream TOP=$(TOP)' first"; exit 1)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/program.tcl) \
+		-source $(call relpath,$(TCL_DIR)/program.tcl,$(BUILD_DIR)) \
 		-tclargs out/$(TOP).bit
 
 flash: --check_com_port ## Flash firmware over COM port
@@ -167,19 +190,28 @@ flash: --check_com_port ## Flash firmware over COM port
 
 sim: --check_tb $(ALL_MEM_FILES) | $(BUILD_DIR) ## Run batch simulation
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl) \
-		-tclargs $(TB) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(TEST_FILES_PATHS)"
+		-source $(call relpath,$(TCL_DIR)/sim.tcl,$(BUILD_DIR)) \
+		-tclargs $(TB) $(FPGA_PART) \
+			"$(call relpath,$(RTL_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(ALL_MEM_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(TB_FILES),$(BUILD_DIR))"
 
 sim_gui: --check_tb $(ALL_MEM_FILES) | $(BUILD_DIR) ## Run GUI simulation
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
-		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/sim.tcl) \
-		-tclargs $(TB) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" \
-			"$(TEST_FILES_PATHS)" "$(XSIM_WCFG_PATH)"
+		-source $(call relpath,$(TCL_DIR)/sim.tcl,$(BUILD_DIR)) \
+		-tclargs $(TB) $(FPGA_PART) \
+			"$(call relpath,$(RTL_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(ALL_MEM_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(TB_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(XSIM_WCFG),$(BUILD_DIR))"
 
-rtl: --check_top $(ALL_MEM_FILES) | $(BUILD_DIR)/out ## Open RTL viewer
+rtl: --check_top $(ALL_MEM_FILES) | $(OUT_DIR) ## Open RTL viewer
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode gui \
-		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/rtl.tcl) \
-		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
+		-source $(call relpath,$(TCL_DIR)/rtl.tcl,$(BUILD_DIR)) \
+		-tclargs $(TOP) $(FPGA_PART) \
+			"$(call relpath,$(RTL_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(ALL_MEM_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(XDC_FILES),$(BUILD_DIR))"
 
 asm: $(BUILT_ASM_FILES) ## Build assembly files to .mem
 
@@ -189,36 +221,33 @@ clean: ## Remove build directory
 	rm -rf $(BUILD_DIR)
 
 
-# Vivado explicit flow targets (super slow)
 # ----------------------------
+# Vivado explicit flow targets (super slow)
 
 # Implementation Stages
-$(SYNTH_DCP): --check_top $(RTL_FILES) $(MEM_FILES) $(ALL_MEM_FILES) $(XDC_FILES) | $(BUILD_DIR)/out
+$(SYNTH_DCP): --check_top $(RTL_FILES) $(MEM_FILES) $(ALL_MEM_FILES) $(XDC_FILES) | $(OUT_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/synth.tcl) \
-		-tclargs $(TOP) $(FPGA_PART) "$(RTL_FILES_PATHS)" "$(ALL_MEM_FILES_PATHS)" "$(XDC_FILES_PATHS)"
+		-source $(call relpath,$(TCL_DIR)/synth.tcl,$(BUILD_DIR)) \
+		-tclargs $(TOP) $(FPGA_PART) \
+			"$(call relpath,$(RTL_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(ALL_MEM_FILES),$(BUILD_DIR))" \
+			"$(call relpath,$(XDC_FILES),$(BUILD_DIR))"
 
-$(PLACE_DCP): $(SYNTH_DCP) | $(BUILD_DIR)/out
+$(PLACE_DCP): $(SYNTH_DCP) | $(OUT_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/place.tcl)
+		-source $(call relpath,$(TCL_DIR)/place.tcl,$(BUILD_DIR))
 
-$(ROUTE_DCP): $(PLACE_DCP) | $(BUILD_DIR)/out
+$(ROUTE_DCP): $(PLACE_DCP) | $(OUT_DIR)
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
-		-source $(shell realpath --relative-to $(BUILD_DIR) $(TCL_DIR)/route.tcl)
+		-source $(call relpath,$(TCL_DIR)/route.tcl,$(BUILD_DIR))
 
 
-# Memory firmware targets
-# -----------------------
-
-$(FIRMWARE_DIR)/%.elf: $(OBJ_FILES) | $(BUILD_DIR)
-	$(LD) -T $(TCL_DIR)/rv32g_harvard.ld -o $@ $(OBJ_FILES)
-	$(OBJDUMP) -D $@ > $(FIRMWARE_DIR)/$*.dis
-	$(READELF) -l $@ > $(FIRMWARE_DIR)/$*.segments.txt
-	$(READELF) -S $@ > $(FIRMWARE_DIR)/$*.sections.txt
-	$(READELF) -s $@ > $(FIRMWARE_DIR)/$*.symbols.txt
+# ----------------------
+# Software build targets
 
 # Object files to ELF
-$(BUILD_DIR)/%.elf: $(BUILD_DIR)/%.o | $(BUILD_DIR)
+$(ASM_OUT_DIR)/%.elf: $(BUILD_DIR)/%.o | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(LD) -T $(TCL_DIR)/rv32g_harvard.ld -o $@ $<
 	$(OBJDUMP) -D $@ > $(BUILD_DIR)/$*.dis
 	$(READELF) -l $@ > $(BUILD_DIR)/$*.segments.txt
@@ -227,57 +256,74 @@ $(BUILD_DIR)/%.elf: $(BUILD_DIR)/%.o | $(BUILD_DIR)
 
 # ELF to binary files
 $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf
+	@mkdir -p $(dir $@)
 	$(OBJCOPY) -O binary $< $@
 
 $(BUILD_DIR)/%.rom.bin: $(BUILD_DIR)/%.elf
+	@mkdir -p $(dir $@)
 	$(OBJCOPY) -O binary -j .text $< $@
 
 $(BUILD_DIR)/%.ram.bin: $(BUILD_DIR)/%.elf
+	@mkdir -p $(dir $@)
 	$(OBJCOPY) -O binary -j .data -j .bss $< $@
 
 
-# Assembly targets
+# ------------
+# Source paths
+
+vpath %.asm $(ASM_DIRS)
+vpath %.c %.cpp %.S $(SRC_DIRS)
+
+
 # ----------------
+# Assembly targets
 
 # Assembly to Object files
-$(ASM_DIR)/%.o: $(RTL_DIR)/%.asm | $(ASM_DIR)
+$(ASM_OUT_DIR)/%.o: %.asm | $(ASM_OUT_DIR)
 	@mkdir -p $(dir $@)
 	$(AS) -march=rv32i -o $@ $<
 
 # Binary to memory files with endian conversion
-$(OUT_DIR)/%.mem: $(ASM_DIR)/%.bin | $(OUT_DIR)
+$(MEM_OUT_DIR)/%.mem: $(ASM_OUT_DIR)/%.bin | $(MEM_OUT_DIR)
 	@mkdir -p $(dir $@)
 	xxd -p -c 4 $< | awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' > $@
 
 
-# Firmware (C++) targets
 # ----------------------
+# Firmware (C++) targets
 
-# Compile startup.S to startup.o
-$(FIRMWARE_DIR)/%.S.o: $(STARTUP_FILE) | $(FIRMWARE_DIR)
+$(FIRMWARE_OUT_DIR)/%.elf: $(OBJ_FILES) | $(FIRMWARE_OUT_DIR)
+	@mkdir -p $(dir $@)
+	$(LD) -T $(TCL_DIR)/rv32g_harvard.ld -o $@ $(OBJ_FILES)
+	$(OBJDUMP) -D $@ > $(FIRMWARE_OUT_DIR)/$*.dis
+	$(READELF) -l $@ > $(FIRMWARE_OUT_DIR)/$*.segments.txt
+	$(READELF) -S $@ > $(FIRMWARE_OUT_DIR)/$*.sections.txt
+	$(READELF) -s $@ > $(FIRMWARE_OUT_DIR)/$*.symbols.txt
+
+$(FIRMWARE_OUT_DIR)/%.S.o: $(STARTUP_FILE) | $(FIRMWARE_OUT_DIR)
+	@mkdir -p $(dir $@)
 	$(GCC) $(CFLAGS) -c -o $@ $<
 
-# Compile each C source file
-$(FIRMWARE_DIR)/%.c.o: $(SRC_DIR)/%.c | $(FIRMWARE_DIR)
-	$(GCC) $(CFLAGS) -I$(INC_DIR) -c -o $@ $<
+$(FIRMWARE_OUT_DIR)/%.c.o: %.c | $(FIRMWARE_OUT_DIR)
+	@mkdir -p $(dir $@)
+	$(GCC) $(CFLAGS) $(INC_FLAGS) -c -o $@ $<
 
-# Compile each C++ source file
-$(FIRMWARE_DIR)/%.cpp.o: $(SRC_DIR)/%.cpp | $(FIRMWARE_DIR)
-	$(GCC) $(CXXFLAGS) -I$(INC_DIR) -c -o $@ $<
+$(FIRMWARE_OUT_DIR)/%.cpp.o: %.cpp | $(FIRMWARE_OUT_DIR)
+	@mkdir -p $(dir $@)
+	$(GCC) $(CXXFLAGS) $(INC_FLAGS) -c -o $@ $<
 
-# ELF to memory files
-$(OUT_DIR)/%.rom.mem: $(FIRMWARE_DIR)/%.elf | $(OUT_DIR)
+$(MEM_OUT_DIR)/%.rom.mem: $(FIRMWARE_OUT_DIR)/%.elf | $(MEM_OUT_DIR)
 	@mkdir -p $(dir $@)
 	$(OBJCOPY) -O verilog -j .text $< $@
 
-$(OUT_DIR)/%.ram.mem: $(FIRMWARE_DIR)/%.elf | $(OUT_DIR)
+$(MEM_OUT_DIR)/%.ram.mem: $(FIRMWARE_OUT_DIR)/%.elf | $(MEM_OUT_DIR)
 	@mkdir -p $(dir $@)
 	$(OBJCOPY) -O verilog -j .data -j .bss $< $@
 
 
-# Utilities
 # ---------
+# Utilities
 
 # Directory creation rules
-$(FIRMWARE_DIR) $(ASM_DIR) $(OUT_DIR) $(BUILD_DIR):
+$(FIRMWARE_OUT_DIR) $(MEM_OUT_DIR) $(ASM_OUT_DIR) $(OUT_DIR) $(BUILD_DIR):
 	mkdir -p $@
