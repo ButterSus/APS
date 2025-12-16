@@ -39,10 +39,9 @@ LINKERSCRIPT := rv32g_harvard.ld
 FPGA_PART    := xc7a100tcsg324-1
 
 # Few requirements:
-# 0. MEM_OUT_DIR can be anywhere
-# 1. Script uses absolute directories, so any spaces in absolute path will ruin it
-# 2. STARTUP_FILE must be in SRC_DIRS
-# 3. ASM_OUT_DIR, FIRMWARE_OUT_DIR should be in BUILD_DIR
+# 0. MEM_OUT_DIR can be anywhere for your convenience
+# 1. It's not recommended to have any spaces in paths
+# 2. ASM_OUT_DIR, FIRMWARE_OUT_DIR should be in BUILD_DIR
 
 
 # ----------------------------------------------------------
