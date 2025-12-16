@@ -63,6 +63,7 @@ ifdef LEGACY
   OUT_DIR          ?= $(BUILD_DIR)/out
   MEM_OUT_DIR      ?= $(OUT_DIR)/mem
   ASM_OUT_DIR      ?= $(OUT_DIR)/asm
+  DISASM_OUT_DIR   ?= $(OUT_DIR)/disasm
   FIRMWARE_OUT_DIR ?= $(FIRMWARE_DIR)
 else
 ifdef RTL_DIR
@@ -128,6 +129,7 @@ ALL_MEM_FILES        := $(MEM_FILES) $(BUILT_ASM_FILES) $(BUILT_FIRMWARE_FILES)
 OBJ_FILES := $(call src_to_obj,$(S_FILES),$(SRC_DIRS),$(FIRMWARE_OUT_DIR),%.S,%.S.o) \
              $(call src_to_obj,$(C_FILES),$(SRC_DIRS),$(FIRMWARE_OUT_DIR),%.c,%.c.o) \
              $(call src_to_obj,$(CPP_FILES),$(SRC_DIRS),$(FIRMWARE_OUT_DIR),%.cpp,%.cpp.o)
+DISASM_FILES := $(call src_to_obj,$(MEM_FILES),$(MEM_DIRS),$(DISASM_OUT_DIR),%.mem,%.disasm)
 
 # Tool prefixes
 AS      = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-as
@@ -157,7 +159,7 @@ READELF = $(RV32_GCC_BIN)/$(RV32_GCC_PREFIX)-readelf
 # ------------
 # Main targets
 
-.PHONY: help quick synth impl bitstream program flash sim sim_gui rtl asm firmware clean
+.PHONY: help quick synth impl bitstream program flash sim sim_gui rtl firmware asm disasm clean
 
 help: ## Show this help screen
 	@awk 'BEGIN {FS = ":.*?##"; printf "\n\033[1mVivado Build System\033[0m\nUsage: make \033[36m<target>\033[0m [TOP=module_name] [TB=testbench_name] [options]\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } END{printf "\n"}' $(MAKEFILE_LIST)
@@ -212,9 +214,11 @@ rtl: --check_top $(ALL_MEM_FILES) | $(OUT_DIR) ## Open RTL viewer
 			"$(call relpath,$(ALL_MEM_FILES),$(BUILD_DIR))" \
 			"$(call relpath,$(XDC_FILES),$(BUILD_DIR))"
 
+firmware: $(BUILT_FIRMWARE_FILES) ## Build C/C++ firmware
+
 asm: $(BUILT_ASM_FILES) ## Build assembly files to .mem
 
-firmware: $(BUILT_FIRMWARE_FILES) ## Build C/C++ firmware
+disasm: $(DISASM_FILES) ## Generate disassembly from .mem files
 
 clean: ## Remove build directory
 	rm -rf $(BUILD_DIR)
@@ -313,9 +317,23 @@ $(ASM_OUT_DIR)/%.o: %.asm | $(ASM_OUT_DIR)
 	$(AS) -march=rv32i -o $@ $<
 
 
+# -------------------
+# Disassembly targets
+
+vpath %.mem $(MEM_DIRS)
+
+$(DISASM_OUT_DIR)/%.disasm: $(DISASM_OUT_DIR)/%.bin | $(DISASM_OUT_DIR)
+	@mkdir -p $(dir $@)
+	$(OBJDUMP) -D -b binary -m riscv:rv32 $< > $@
+
+$(DISASM_OUT_DIR)/%.bin: %.mem | $(DISASM_OUT_DIR)
+	@mkdir -p $(dir $@)
+	awk '{print substr($$0,7,2) substr($$0,5,2) substr($$0,3,2) substr($$0,1,2)}' $< | xxd -r -p > $@
+
+
 # ---------
 # Utilities
 
 # Directory creation rules
-$(FIRMWARE_OUT_DIR) $(MEM_OUT_DIR) $(ASM_OUT_DIR) $(OUT_DIR) $(BUILD_DIR):
+$(FIRMWARE_OUT_DIR) $(MEM_OUT_DIR) $(ASM_OUT_DIR) $(DISASM_OUT_DIR) $(OUT_DIR) $(BUILD_DIR):
 	mkdir -p $@
