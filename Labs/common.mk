@@ -269,7 +269,9 @@ $(MEM_OUT_DIR)/%.mem: $(ASM_OUT_DIR)/%.bin | $(MEM_OUT_DIR)
 # ----------------------
 # Firmware (C++) targets
 
-vpath %.c %.cpp %.S $(SRC_DIRS)
+vpath %.S   $(SRC_DIRS)
+vpath %.c   $(SRC_DIRS)
+vpath %.cpp $(SRC_DIRS)
 
 $(FIRMWARE_OUT_DIR)/$(FIRMWARE_NAME).elf: $(OBJ_FILES) | $(FIRMWARE_OUT_DIR)
 	@mkdir -p $(dir $@)
