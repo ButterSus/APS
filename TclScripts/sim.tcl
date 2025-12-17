@@ -62,7 +62,3 @@ proc rerun {} {
 puts "Use 'rerun' to relaunch the simulation"
 
 run all
-
-if {$wave_cfg_path eq ""} {
-    close_sim -force
-}
