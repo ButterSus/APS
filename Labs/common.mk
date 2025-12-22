@@ -34,6 +34,7 @@ RV32_GCC_PREFIX := riscv32-unknown-elf
 CFLAGS       := -march=rv32i_zicsr -mabi=ilp32 -Wl,--gc-sections -nostartfiles
 CXXFLAGS     := -march=rv32i_zicsr -mabi=ilp32 -Wl,--gc-sections -nostartfiles
 LINKERSCRIPT := rv32g_harvard.ld
+PYTHON       := python3
 
 # FPGA Configuration (Nexys A7)
 FPGA_PART    := xc7a100tcsg324-1
@@ -187,7 +188,7 @@ program: --check_top ## Program FPGA (needs bitstream first)
 		-tclargs out/$(TOP).bit
 
 flash: --check_com_port ## Flash firmware over COM port
-	python3 $(SCRIPTS_DIR)/flash.py -d $(BUILT_FIRMWARE_RAM) $(BUILT_FIRMWARE_ROM) $(COM_PORT)
+	$(PYTHON) $(SCRIPTS_DIR)/flash.py -d $(BUILT_FIRMWARE_RAM) $(BUILT_FIRMWARE_ROM) $(COM_PORT)
 
 sim: --check_tb $(ALL_MEM_FILES) | $(BUILD_DIR) ## Run batch simulation
 	cd $(BUILD_DIR) && $(VIVADO_BIN)/vivado -mode batch -notrace \
